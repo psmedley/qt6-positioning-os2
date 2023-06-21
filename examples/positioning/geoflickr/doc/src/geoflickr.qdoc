@@ -1,29 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2019 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the documentation of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:FDL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Free Documentation License Usage
-** Alternatively, this file may be used under the terms of the GNU Free
-** Documentation License version 1.3 as published by the Free Software
-** Foundation and appearing in the file included in the packaging of
-** this file. Please review the following information to ensure
-** the GNU Free Documentation License version 1.3 requirements
-** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2019 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GFDL-1.3-no-invariants-only
 
 /*!
     \example geoflickr
@@ -56,11 +32,19 @@
 
     \snippet geoflickr/flickrmobile/GeoTab.qml possrc
 
-    When the "Locate and update" button is pressed, we first interrogate
-    the \l PositionSource to check if it has an available backend for
-    positioning data. If it does not, we fall back to using a pre-recorded
-    NMEA log for demonstration. We then instruct the \l PositionSource to
-    request a location \l {QtPositioning::PositionSource::}{update}.
+    When the "Locate and update" button is pressed, we instruct the
+    \l PositionSource to request a location
+    \l {QtPositioning::PositionSource::}{update}. If the update finishes with
+    an error, we check if the default backend is capable of providing
+    positioning data. If it's not, we switch to \c {nmea} backend with
+    pre-recorded data, and request the location
+    \l {QtPositioning::PositionSource::}{update} again.
+
+    We cannot check the \l {PositionSource::}{supportedPositioningMethods} in
+    advance, because on mobile platforms (Android and iOS) this method will
+    return \c {NoPositioningMethods} before the permissions are granted.
+    And the permissions request is first performed when location update is
+    requested.
 
     \snippet geoflickr/flickrmobile/GeoTab.qml locatebutton-top
     \snippet geoflickr/flickrmobile/GeoTab.qml locatebutton-clicked

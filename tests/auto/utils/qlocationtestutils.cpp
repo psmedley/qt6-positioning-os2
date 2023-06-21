@@ -1,30 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only WITH Qt-GPL-exception-1.0
 
 #include "qlocationtestutils_p.h"
 
@@ -40,11 +15,11 @@ bool QLocationTestUtils::hasDefaultMonitor()
 
 QString QLocationTestUtils::addNmeaChecksumAndBreaks(const QString &sentence)
 {
-    Q_ASSERT(sentence[0] == '$' && sentence[sentence.length()-1] == '*');
+    Q_ASSERT(sentence[0] == '$' && sentence[sentence.size()-1] == '*');
 
     // XOR byte value of all characters between '$' and '*'
     int result = 0;
-    for (int i=1; i<sentence.length()-1; i++)
+    for (int i=1; i<sentence.size()-1; i++)
         result ^= sentence[i].toLatin1();
     const QString sum = QString::asprintf("%02x", result);
     return sentence + sum + "\r\n";

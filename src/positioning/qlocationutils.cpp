@@ -1,43 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 Jolla Ltd.
-** Contact: Aaron McCarthy <aaron.mccarthy@jollamobile.com>
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 Jolla Ltd.
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 #include "qlocationutils_p.h"
 #include "qgeopositioninfo.h"
 #include "qgeosatelliteinfo.h"
@@ -66,16 +29,16 @@ static void qlocationutils_readGga(const char *data, int size, QGeoPositionInfo 
     QList<QByteArray> parts = sentence.split(',');
     QGeoCoordinate coord;
 
-    if (hasFix && parts.count() > 6 && parts[6].count() > 0)
+    if (hasFix && parts.size() > 6 && !parts[6].isEmpty())
         *hasFix = parts[6].toInt() > 0;
 
-    if (parts.count() > 1 && parts[1].count() > 0) {
+    if (parts.size() > 1 && !parts[1].isEmpty()) {
         QTime time;
         if (QLocationUtils::getNmeaTime(parts[1], &time))
             info->setTimestamp(QDateTime(QDate(), time, Qt::UTC));
     }
 
-    if (parts.count() > 5 && parts[3].count() == 1 && parts[5].count() == 1) {
+    if (parts.size() > 5 && parts[3].size() == 1 && parts[5].size() == 1) {
         double lat;
         double lng;
         if (QLocationUtils::getNmeaLatLong(parts[2], parts[3][0], parts[4], parts[5][0], &lat, &lng)) {
@@ -84,14 +47,14 @@ static void qlocationutils_readGga(const char *data, int size, QGeoPositionInfo 
         }
     }
 
-    if (parts.count() > 8 && !parts[8].isEmpty()) {
+    if (parts.size() > 8 && !parts[8].isEmpty()) {
         bool hasHdop = false;
         double hdop = parts[8].toDouble(&hasHdop);
         if (hasHdop)
             info->setAttribute(QGeoPositionInfo::HorizontalAccuracy, 2 * hdop * uere);
     }
 
-    if (parts.count() > 9 && parts[9].count() > 0) {
+    if (parts.size() > 9 && !parts[9].isEmpty()) {
         bool hasAlt = false;
         double alt = parts[9].toDouble(&hasAlt);
         if (hasAlt)
@@ -107,17 +70,17 @@ static void qlocationutils_readGsa(const char *data, int size, QGeoPositionInfo 
 {
     QList<QByteArray> parts = QByteArray::fromRawData(data, size).split(',');
 
-    if (hasFix && parts.count() > 2 && !parts[2].isEmpty())
+    if (hasFix && parts.size() > 2 && !parts[2].isEmpty())
         *hasFix = parts[2].toInt() > 0;
 
-    if (parts.count() > 16 && !parts[16].isEmpty()) {
+    if (parts.size() > 16 && !parts[16].isEmpty()) {
         bool hasHdop = false;
         double hdop = parts[16].toDouble(&hasHdop);
         if (hasHdop)
             info->setAttribute(QGeoPositionInfo::HorizontalAccuracy, 2 * hdop * uere);
     }
 
-    if (parts.count() > 17 && !parts[17].isEmpty()) {
+    if (parts.size() > 17 && !parts[17].isEmpty()) {
         bool hasVdop = false;
         double vdop = parts[17].toDouble(&hasVdop);
         if (hasVdop)
@@ -131,10 +94,10 @@ static void qlocationutils_readGsa(const char *data,
 {
     QList<QByteArray> parts = QByteArray::fromRawData(data, size).split(',');
     pnrsInUse.clear();
-    if (parts.count() <= 2)
+    if (parts.size() <= 2)
         return;
     bool ok;
-    for (int i = 3; i <= qMin(14, parts.size()); ++i) {
+    for (qsizetype i = 3; i < qMin(15, parts.size()); ++i) {
         const QByteArray &pnrString = parts.at(i);
         if (pnrString.isEmpty())
             continue;
@@ -150,16 +113,16 @@ static void qlocationutils_readGll(const char *data, int size, QGeoPositionInfo 
     QList<QByteArray> parts = sentence.split(',');
     QGeoCoordinate coord;
 
-    if (hasFix && parts.count() > 6 && parts[6].count() > 0)
+    if (hasFix && parts.size() > 6 && !parts[6].isEmpty())
         *hasFix = (parts[6][0] == 'A');
 
-    if (parts.count() > 5 && parts[5].count() > 0) {
+    if (parts.size() > 5 && !parts[5].isEmpty()) {
         QTime time;
         if (QLocationUtils::getNmeaTime(parts[5], &time))
             info->setTimestamp(QDateTime(QDate(), time, Qt::UTC));
     }
 
-    if (parts.count() > 4 && parts[2].count() == 1 && parts[4].count() == 1) {
+    if (parts.size() > 4 && parts[2].size() == 1 && parts[4].size() == 1) {
         double lat;
         double lng;
         if (QLocationUtils::getNmeaLatLong(parts[1], parts[2][0], parts[3], parts[4][0], &lat, &lng)) {
@@ -180,10 +143,10 @@ static void qlocationutils_readRmc(const char *data, int size, QGeoPositionInfo 
     QDate date;
     QTime time;
 
-    if (hasFix && parts.count() > 2 && parts[2].count() > 0)
+    if (hasFix && parts.size() > 2 && !parts[2].isEmpty())
         *hasFix = (parts[2][0] == 'A');
 
-    if (parts.count() > 9 && parts[9].count() == 6) {
+    if (parts.size() > 9 && parts[9].size() == 6) {
         date = QDate::fromString(QString::fromLatin1(parts[9]), QStringLiteral("ddMMyy"));
         if (date.isValid())
             date = date.addYears(100);     // otherwise starts from 1900
@@ -191,10 +154,10 @@ static void qlocationutils_readRmc(const char *data, int size, QGeoPositionInfo 
             date = QDate();
     }
 
-    if (parts.count() > 1 && parts[1].count() > 0)
+    if (parts.size() > 1 && !parts[1].isEmpty())
         QLocationUtils::getNmeaTime(parts[1], &time);
 
-    if (parts.count() > 6 && parts[4].count() == 1 && parts[6].count() == 1) {
+    if (parts.size() > 6 && parts[4].size() == 1 && parts[6].size() == 1) {
         double lat;
         double lng;
         if (QLocationUtils::getNmeaLatLong(parts[3], parts[4][0], parts[5], parts[6][0], &lat, &lng)) {
@@ -205,17 +168,17 @@ static void qlocationutils_readRmc(const char *data, int size, QGeoPositionInfo 
 
     bool parsed = false;
     double value = 0.0;
-    if (parts.count() > 7 && parts[7].count() > 0) {
+    if (parts.size() > 7 && !parts[7].isEmpty()) {
         value = parts[7].toDouble(&parsed);
         if (parsed)
             info->setAttribute(QGeoPositionInfo::GroundSpeed, qreal(value * 1.852 / 3.6));    // knots -> m/s
     }
-    if (parts.count() > 8 && parts[8].count() > 0) {
+    if (parts.size() > 8 && !parts[8].isEmpty()) {
         value = parts[8].toDouble(&parsed);
         if (parsed)
             info->setAttribute(QGeoPositionInfo::Direction, qreal(value));
     }
-    if (parts.count() > 11 && parts[11].count() == 1
+    if (parts.size() > 11 && parts[11].size() == 1
             && (parts[11][0] == 'E' || parts[11][0] == 'W')) {
         value = parts[10].toDouble(&parsed);
         if (parsed) {
@@ -241,12 +204,12 @@ static void qlocationutils_readVtg(const char *data, int size, QGeoPositionInfo 
 
     bool parsed = false;
     double value = 0.0;
-    if (parts.count() > 1 && parts[1].count() > 0) {
+    if (parts.size() > 1 && !parts[1].isEmpty()) {
         value = parts[1].toDouble(&parsed);
         if (parsed)
             info->setAttribute(QGeoPositionInfo::Direction, qreal(value));
     }
-    if (parts.count() > 7 && parts[7].count() > 0) {
+    if (parts.size() > 7 && !parts[7].isEmpty()) {
         value = parts[7].toDouble(&parsed);
         if (parsed)
             info->setAttribute(QGeoPositionInfo::GroundSpeed, qreal(value / 3.6));    // km/h -> m/s
@@ -263,14 +226,14 @@ static void qlocationutils_readZda(const char *data, int size, QGeoPositionInfo 
     QDate date;
     QTime time;
 
-    if (parts.count() > 1 && parts[1].count() > 0)
+    if (parts.size() > 1 && !parts[1].isEmpty())
         QLocationUtils::getNmeaTime(parts[1], &time);
 
-    if (parts.count() > 4 && parts[2].count() > 0 && parts[3].count() > 0
-            && parts[4].count() == 4) {     // must be full 4-digit year
-        int day = parts[2].toUInt();
-        int month = parts[3].toUInt();
-        int year = parts[4].toUInt();
+    if (parts.size() > 4 && !parts[2].isEmpty() && !parts[3].isEmpty()
+            && parts[4].size() == 4) {     // must be full 4-digit year
+        int day = parts[2].toInt();
+        int month = parts[3].toInt();
+        int year = parts[4].toInt();
         if (day > 0 && month > 0 && year > 0)
             date.setDate(year, month, day);
     }
@@ -431,7 +394,7 @@ QLocationUtils::getSatInfoFromNmea(const char *data, int size, QList<QGeoSatelli
 
     QList<QByteArray> parts = QByteArray::fromRawData(data, size).split(',');
 
-    if (parts.count() <= 3) {
+    if (parts.size() <= 3) {
         infos.clear();
         return QNmeaSatelliteInfoSource::FullyParsed; // Malformed sentence.
     }
@@ -458,6 +421,10 @@ QLocationUtils::getSatInfoFromNmea(const char *data, int size, QList<QGeoSatelli
         infos.clear();
 
     const int numSatInSentence = qMin(sentence * 4, totalSats) - (sentence - 1) * 4;
+    if (parts.size() < (4 + numSatInSentence * 4)) {
+        infos.clear();
+        return QNmeaSatelliteInfoSource::FullyParsed; // Malformed sentence.
+    }
 
     int field = 4;
     for (int i = 0; i < numSatInSentence; ++i) {
@@ -558,8 +525,8 @@ bool QLocationUtils::hasValidNmeaChecksum(const char *data, int size)
         }
     }
 
-    const int CSUM_LEN = 2;
-    if (asteriskIndex < 0 || asteriskIndex + CSUM_LEN >= size)
+    constexpr qsizetype CSUM_LEN = 2;
+    if (asteriskIndex < 0 || asteriskIndex >= size - CSUM_LEN)
         return false;
 
     // XOR byte value of all characters between '$' and '*'

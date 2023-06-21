@@ -1,32 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 Jolla Ltd.
-** Contact: Aaron McCarthy <aaron.mccarthy@jollamobile.com>
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 Jolla Ltd.
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only WITH Qt-GPL-exception-1.0
 
 //TESTED_COMPONENT=src/location
 
@@ -133,7 +107,7 @@ void tst_QNmeaPositionInfoSource::setUpdateInterval_delayedUpdate()
     QTest::qWait(waitInterval);
     QDateTime now = QDateTime::currentDateTime();
     proxy->feedUpdate(now);
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
 
     // should have gotten the update immediately, and not have needed to
     // wait until the next interval
@@ -153,7 +127,7 @@ void tst_QNmeaPositionInfoSource::lastKnownPosition()
     // trigger reading of data channel
     QSignalSpy spyTimeout(proxy->source(), SIGNAL(errorOccurred(QGeoPositionInfoSource::Error)));
     proxy->source()->requestUpdate(proxy->source()->minimumUpdateInterval());
-    QTRY_COMPARE(spyTimeout.count(), 1);
+    QTRY_COMPARE(spyTimeout.size(), 1);
     const QList<QVariant> arguments = spyTimeout.takeFirst();
     const auto error = arguments.at(0).value<QGeoPositionInfoSource::Error>();
     QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
@@ -165,7 +139,7 @@ void tst_QNmeaPositionInfoSource::lastKnownPosition()
     QTRY_COMPARE(proxy->source()->lastKnownPosition().timestamp(), dt);
 
     QList<QDateTime> dateTimes = createDateTimes(5);
-    for (int i=0; i<dateTimes.count(); i++) {
+    for (int i=0; i<dateTimes.size(); i++) {
         proxy->source()->requestUpdate(); // Irrelevant for this test
         proxy->feedUpdate(dateTimes[i]);
         QTRY_COMPARE(proxy->source()->lastKnownPosition().timestamp(), dateTimes[i]);
@@ -174,7 +148,7 @@ void tst_QNmeaPositionInfoSource::lastKnownPosition()
     proxy->source()->startUpdates();
     // if dateTimes are older than before, they will be ignored.
     dateTimes = createDateTimes(dateTimes.last().addMSecs(100), 5);
-    for (int i=0; i<dateTimes.count(); i++) {
+    for (int i=0; i<dateTimes.size(); i++) {
         proxy->feedUpdate(dateTimes[i]);
         QTRY_COMPARE(proxy->source()->lastKnownPosition().timestamp(), dateTimes[i]);
     }
@@ -191,7 +165,7 @@ void tst_QNmeaPositionInfoSource::beginWithBufferedData()
     QFETCH(UpdateTriggerMethod, trigger);
 
     QByteArray bytes;
-    for (int i=0; i<dateTimes.count(); i++)
+    for (int i=0; i<dateTimes.size(); i++)
         bytes += QLocationTestUtils::createRmcSentence(dateTimes[i]).toLatin1();
     QBuffer buffer;
     buffer.setData(bytes);
@@ -206,14 +180,14 @@ void tst_QNmeaPositionInfoSource::beginWithBufferedData()
         source.requestUpdate();
 
     if (m_mode == QNmeaPositionInfoSource::RealTimeMode) {
-        QTRY_COMPARE_WITH_TIMEOUT(spy.count(), 0, 300);
+        QTRY_COMPARE_WITH_TIMEOUT(spy.size(), 0, 300);
     } else {
         if (trigger == StartUpdatesMethod) {
-            QTRY_COMPARE(spy.count(), dateTimes.count());
-            for (int i=0; i<dateTimes.count(); i++)
+            QTRY_COMPARE(spy.size(), dateTimes.size());
+            for (int i=0; i<dateTimes.size(); i++)
                 QCOMPARE(spy.at(i).at(0).value<QGeoPositionInfo>().timestamp(), dateTimes[i]);
         } else if (trigger == RequestUpdatesMethod) {
-            QTRY_COMPARE(spy.count(), 1);
+            QTRY_COMPARE(spy.size(), 1);
             QCOMPARE(spy.at(0).at(0).value<QGeoPositionInfo>().timestamp(), dateTimes.first());
         }
     }
@@ -248,9 +222,9 @@ void tst_QNmeaPositionInfoSource::startUpdates()
     QSignalSpy spyUpdate(proxy->source(), SIGNAL(positionUpdated(QGeoPositionInfo)));
     proxy->source()->startUpdates();
 
-    for (int i=0; i<dateTimes.count(); i++)
+    for (int i=0; i<dateTimes.size(); i++)
         proxy->feedUpdate(dateTimes[i]);
-    QTRY_COMPARE(spyUpdate.count(), dateTimes.count());
+    QTRY_COMPARE(spyUpdate.size(), dateTimes.size());
 }
 
 void tst_QNmeaPositionInfoSource::startUpdates_data()
@@ -289,49 +263,49 @@ void tst_QNmeaPositionInfoSource::startUpdates_withTimeout()
         t.start();
 
         for (int j = 1; j < 4; ++j) {
-            QTRY_COMPARE(spyUpdate.count(), j);
-            QCOMPARE(spyTimeout.count(), 0);
+            QTRY_COMPARE(spyUpdate.size(), j);
+            QCOMPARE(spyTimeout.size(), 0);
             int time = t.elapsed();
             QVERIFY((time > j*1000 - 300) && (time < j*1000 + 300));
         }
 
         spyUpdate.clear();
 
-        QTRY_VERIFY_WITH_TIMEOUT((spyUpdate.count() == 0) && (spyTimeout.count() == 1), 7500);
+        QTRY_VERIFY_WITH_TIMEOUT((spyUpdate.size() == 0) && (spyTimeout.size() == 1), 7500);
         const QList<QVariant> arguments = spyTimeout.takeFirst();
         const auto error = arguments.at(0).value<QGeoPositionInfoSource::Error>();
         QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
         spyTimeout.clear();
 
-        QTRY_VERIFY_WITH_TIMEOUT((spyUpdate.count() == 1) && (spyTimeout.count() == 0), 7500);
+        QTRY_VERIFY_WITH_TIMEOUT((spyUpdate.size() == 1) && (spyTimeout.size() == 0), 7500);
 
     } else {
         // dt + 900
-        QTRY_VERIFY(spyUpdate.count() == 0 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 0 && spyTimeout.size() == 0);
 
         proxy->feedBytes(QLocationTestUtils::createRmcSentence(dt.addSecs(1)).toLatin1());
         // dt + 1200
-        QTRY_VERIFY(spyUpdate.count() == 1 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 1 && spyTimeout.size() == 0);
         spyUpdate.clear();
 
         // dt + 1900
-        QTRY_VERIFY(spyUpdate.count() == 0 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 0 && spyTimeout.size() == 0);
         proxy->feedBytes(QLocationTestUtils::createRmcSentence(dt.addSecs(2)).toLatin1());
 
         // dt + 2200
-        QTRY_VERIFY(spyUpdate.count() == 1 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 1 && spyTimeout.size() == 0);
         spyUpdate.clear();
 
         // dt + 2900
-        QTRY_VERIFY(spyUpdate.count() == 0 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 0 && spyTimeout.size() == 0);
         proxy->feedBytes(QLocationTestUtils::createRmcSentence(dt.addSecs(3)).toLatin1());
 
         // dt + 3200
-        QTRY_VERIFY(spyUpdate.count() == 1 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 1 && spyTimeout.size() == 0);
         spyUpdate.clear();
 
         // dt + 6900
-        QTRY_VERIFY(spyUpdate.count() == 0 && spyTimeout.count() == 1);
+        QTRY_VERIFY(spyUpdate.size() == 0 && spyTimeout.size() == 1);
         const QList<QVariant> arguments = spyTimeout.takeFirst();
         const auto error = arguments.at(0).value<QGeoPositionInfoSource::Error>();
         QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
@@ -339,7 +313,7 @@ void tst_QNmeaPositionInfoSource::startUpdates_withTimeout()
         proxy->feedBytes(QLocationTestUtils::createRmcSentence(dt.addSecs(7)).toLatin1());
 
         // dt + 7200
-        QTRY_VERIFY(spyUpdate.count() == 1 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 1 && spyTimeout.size() == 0);
         spyUpdate.clear();
     }
 }
@@ -359,10 +333,10 @@ void tst_QNmeaPositionInfoSource::startUpdates_expectLatestUpdateOnly()
     proxy->source()->startUpdates();
 
     QList<QDateTime> dateTimes = createDateTimes(3);
-    for (int i=0; i<dateTimes.count(); i++)
+    for (int i=0; i<dateTimes.size(); i++)
         proxy->feedUpdate(dateTimes[i]);
 
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
     QCOMPARE(spyUpdate[0][0].value<QGeoPositionInfo>().timestamp(), dateTimes.last());
 }
 
@@ -392,9 +366,9 @@ void tst_QNmeaPositionInfoSource::startUpdates_waitForValidDateTime()
     proxy->source()->startUpdates();
     proxy->feedBytes(bytes);
     QTest::qWait(1000); // default push delay is 20ms
-    QTRY_COMPARE(spy.count(), dateTimes.count());
+    QTRY_COMPARE(spy.size(), dateTimes.size());
 
-    for (int i=0; i<spy.count(); i++) {
+    for (int i=0; i<spy.size(); i++) {
         QGeoPositionInfo pInfo = spy[i][0].value<QGeoPositionInfo>();
 
         QCOMPARE(pInfo.timestamp(), dateTimes[i]);
@@ -487,7 +461,7 @@ void tst_QNmeaPositionInfoSource::requestUpdate_waitForValidDateTime()
     proxy->source()->requestUpdate();
 
     proxy->feedBytes(bytes);
-    QTRY_COMPARE(spy.count(), 1);
+    QTRY_COMPARE(spy.size(), 1);
     QCOMPARE(spy[0][0].value<QGeoPositionInfo>().timestamp(), dateTimes[0]);
 }
 
@@ -508,7 +482,7 @@ void tst_QNmeaPositionInfoSource::requestUpdate()
     QDateTime dt;
 
     proxy->source()->requestUpdate(100);
-    QTRY_COMPARE(spyTimeout.count(), 1);
+    QTRY_COMPARE(spyTimeout.size(), 1);
     auto error = spyTimeout[0][0].value<QGeoPositionInfoSource::Error>();
     QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
     spyTimeout.clear();
@@ -516,9 +490,9 @@ void tst_QNmeaPositionInfoSource::requestUpdate()
     dt = QDateTime::currentDateTimeUtc();
     proxy->feedUpdate(dt);
     proxy->source()->requestUpdate();
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
     QCOMPARE(spyUpdate[0][0].value<QGeoPositionInfo>().timestamp(), dt);
-    QCOMPARE(spyTimeout.count(), 0);
+    QCOMPARE(spyTimeout.size(), 0);
     spyUpdate.clear();
 
     // delay the update and expect it to be emitted after 300ms
@@ -526,9 +500,9 @@ void tst_QNmeaPositionInfoSource::requestUpdate()
     proxy->source()->requestUpdate(1000);
     QTest::qWait(300);
     proxy->feedUpdate(dt);
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
     QCOMPARE(spyUpdate[0][0].value<QGeoPositionInfo>().timestamp(), dt);
-    QCOMPARE(spyTimeout.count(), 0);
+    QCOMPARE(spyTimeout.size(), 0);
     spyUpdate.clear();
 
     // delay the update and expect errorOccurred() to be emitted
@@ -536,10 +510,10 @@ void tst_QNmeaPositionInfoSource::requestUpdate()
     proxy->source()->requestUpdate(500);
     QTest::qWait(1000);
     proxy->feedUpdate(dt);
-    QCOMPARE(spyTimeout.count(), 1);
+    QCOMPARE(spyTimeout.size(), 1);
     error = spyTimeout[0][0].value<QGeoPositionInfoSource::Error>();
     QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
-    QCOMPARE(spyUpdate.count(), 0);
+    QCOMPARE(spyUpdate.size(), 0);
     spyUpdate.clear();
 }
 
@@ -563,13 +537,13 @@ void tst_QNmeaPositionInfoSource::requestUpdate_after_start()
     proxy->source()->startUpdates();
     proxy->source()->requestUpdate(100);
     proxy->feedUpdate(dt);
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
     QCOMPARE(spyUpdate[0][0].value<QGeoPositionInfo>().timestamp(), dt);
-    QCOMPARE(spyTimeout.count(), 0);
+    QCOMPARE(spyTimeout.size(), 0);
     spyUpdate.clear();
 
     // Update has been emitted for requestUpdate(), shouldn't be emitted for startUpdates()
-    QTRY_COMPARE_WITH_TIMEOUT(spyUpdate.count(), 0, 1000);
+    QTRY_COMPARE_WITH_TIMEOUT(spyUpdate.size(), 0, 1000);
 }
 
 void tst_QNmeaPositionInfoSource::testWithBadNmea()
@@ -590,8 +564,8 @@ void tst_QNmeaPositionInfoSource::testWithBadNmea()
         proxy->source()->requestUpdate();
 
     proxy->feedBytes(bytes);
-    QTRY_COMPARE(spy.count(), dateTimes.count());
-    for (int i=0; i<dateTimes.count(); i++)
+    QTRY_COMPARE(spy.size(), dateTimes.size());
+    for (int i=0; i<dateTimes.size(); i++)
         QCOMPARE(spy[i][0].value<QGeoPositionInfo>().timestamp(), dateTimes[i]);
 }
 
@@ -603,7 +577,7 @@ void tst_QNmeaPositionInfoSource::testWithBadNmea_data()
 
     QDateTime firstDateTime = QDateTime::currentDateTimeUtc();
     QByteArray bad = QLocationTestUtils::createRmcSentence(firstDateTime.addSecs(1)).toLatin1();
-    bad = bad.mid(bad.length()/2);
+    bad = bad.mid(bad.size()/2);
     QDateTime lastDateTime = firstDateTime.addSecs(2);
 
     QByteArray bytes;

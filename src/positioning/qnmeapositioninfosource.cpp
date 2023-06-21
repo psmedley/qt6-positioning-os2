@@ -1,43 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 Jolla Ltd.
-** Contact: Aaron McCarthy <aaron.mccarthy@jollamobile.com>
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 Jolla Ltd.
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 #include "qnmeapositioninfosource_p.h"
 #include "qgeopositioninfo_p.h"
 #include "qlocationutils_p.h"
@@ -327,17 +290,17 @@ static int processSentence(QGeoPositionInfo &info,
 {
     int timeToNextUpdate = -1;
     QDateTime prevTs;
-    if (m_pendingUpdates.size() > 0)
+    if (!m_pendingUpdates.isEmpty())
         prevTs = m_pendingUpdates.head().info.timestamp();
 
     // find the next update with a valid time (as long as the time is valid,
     // we can calculate when the update should be emitted)
-    while (m_nextLine.size() || (m_proxy->m_device && m_proxy->m_device->bytesAvailable() > 0)) {
+    while (!m_nextLine.isEmpty() || (m_proxy->m_device && m_proxy->m_device->bytesAvailable() > 0)) {
         char static_buf[1024];
         char *buf = static_buf;
         QByteArray nextLine;
         qint64 size = 0;
-        if (m_nextLine.size()) {
+        if (!m_nextLine.isEmpty()) {
             // Read something in the previous call, but TS was later.
             size = m_nextLine.size();
             nextLine = m_nextLine;
@@ -435,7 +398,7 @@ bool QNmeaSimulatedReader::setFirstDateTime()
 
 void QNmeaSimulatedReader::simulatePendingUpdate()
 {
-    if (m_pendingUpdates.size() > 0) {
+    if (!m_pendingUpdates.isEmpty()) {
         // will be dequeued in processNextSentence()
         QPendingGeoPositionInfo &pending = m_pendingUpdates.head();
         m_proxy->notifyNewUpdate(&pending.info, pending.hasFix);

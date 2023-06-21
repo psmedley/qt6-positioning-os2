@@ -1,41 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include "qdeclarativepositionsource_p.h"
 #include "qdeclarativeposition_p.h"
@@ -288,7 +252,7 @@ void QDeclarativePositionSource::tryAttach(const QString &newName, bool useFallb
         m_positionSource->setPreferredPositioningMethods(
             static_cast<QGeoPositionInfoSource::PositioningMethods>(int(m_preferredPositioningMethods)));
 
-        if (m_active) {
+        if (m_startRequested) {
             const QGeoPositionInfo &lastKnown = m_positionSource->lastKnownPosition();
             if (lastKnown.isValid())
                 setPosition(lastKnown);
@@ -361,34 +325,13 @@ bool QDeclarativePositionSource::isValidActualComputation() const
     return m_positionSource != nullptr;
 }
 
-void QDeclarativePositionSource::handleUpdateTimeout()
-{
-    // notify will be called by the calling method
-    m_sourceError.setValueBypassingBindings(QDeclarativePositionSource::UpdateTimeoutError);
-
-    if (!m_active)
-        return;
-
-    if (m_singleUpdate) {
-        m_singleUpdate = false;
-
-        if (!m_regularUpdates) {
-            // only singleUpdate based timeouts change activity
-            // continuous updates may resume again
-            // (see QGeoPositionInfoSource::startUpdates())
-            m_active.setValueBypassingBindings(false);
-            m_active.notify();
-        }
-    }
-}
-
 /*!
     \internal
 */
 void QDeclarativePositionSource::onParameterInitialized()
 {
     m_parametersInitialized = true;
-    for (QDeclarativePluginParameter *p: qAsConst(m_parameters)) {
+    for (QDeclarativePluginParameter *p: std::as_const(m_parameters)) {
         if (!p->isInitialized()) {
             m_parametersInitialized = false;
             break;
@@ -429,7 +372,7 @@ void QDeclarativePositionSource::setSource(QGeoPositionInfoSource *source)
 
 bool QDeclarativePositionSource::parametersReady()
 {
-    for (const QDeclarativePluginParameter *p: qAsConst(m_parameters)) {
+    for (const QDeclarativePluginParameter *p: std::as_const(m_parameters)) {
         if (!p->isInitialized())
             return false;
     }
@@ -796,7 +739,7 @@ void QDeclarativePositionSource::parameter_append(QQmlListProperty<QDeclarativeP
 */
 qsizetype QDeclarativePositionSource::parameter_count(QQmlListProperty<QDeclarativePluginParameter> *prop)
 {
-    return static_cast<QDeclarativePositionSource *>(prop->object)->m_parameters.count();
+    return static_cast<QDeclarativePositionSource *>(prop->object)->m_parameters.size();
 }
 
 /*!
@@ -839,7 +782,7 @@ void QDeclarativePositionSource::componentComplete()
 {
     m_componentComplete = true;
     m_parametersInitialized = true;
-    for (QDeclarativePluginParameter *p: qAsConst(m_parameters)) {
+    for (QDeclarativePluginParameter *p: std::as_const(m_parameters)) {
         if (!p->isInitialized()) {
             m_parametersInitialized = false;
             connect(p, &QDeclarativePluginParameter::initialized,
@@ -904,7 +847,7 @@ void QDeclarativePositionSource::sourceErrorReceived(const QGeoPositionInfoSourc
     else if (error == QGeoPositionInfoSource::ClosedError)
         m_sourceError.setValueBypassingBindings(QDeclarativePositionSource::ClosedError);
     else if (error == QGeoPositionInfoSource::UpdateTimeoutError)
-        handleUpdateTimeout(); // also sets m_sourceError
+        m_sourceError.setValueBypassingBindings(QDeclarativePositionSource::UpdateTimeoutError);
     else if (error == QGeoPositionInfoSource::NoError)
         return; //nothing to do
     else
@@ -912,6 +855,16 @@ void QDeclarativePositionSource::sourceErrorReceived(const QGeoPositionInfoSourc
 
     m_sourceError.notify();
     emit sourceErrorChanged();
+
+    // if an error occurred during single update, the update is stopped, so we
+    // need to change the active state.
+    if (m_active && m_singleUpdate) {
+        m_singleUpdate = false;
+        if (!m_regularUpdates) {
+            m_active.setValueBypassingBindings(false);
+            m_active.notify();
+        }
+    }
 }
 
 QT_END_NAMESPACE

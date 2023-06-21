@@ -149,7 +149,8 @@ void QGeoPositionInfoSourceAndroid::requestUpdate(int timeout)
     if (updatesRunning && updateInterval() <= timeout)
         return;
 
-    QGeoPositionInfoSource::Error error = AndroidPositioning::requestUpdate(androidClassKeyForSingleRequest);
+    const QGeoPositionInfoSource::Error error =
+            AndroidPositioning::requestUpdate(androidClassKeyForSingleRequest, timeout);
     if (error != QGeoPositionInfoSource::NoError) {
         m_requestTimer.stop();
         setError(error);
@@ -214,33 +215,29 @@ void QGeoPositionInfoSourceAndroid::requestTimeout()
         return;
     }
 
-    //pick best
-    QGeoPositionInfo best = queuedSingleUpdates[0];
-    for (qsizetype i = 1; i < queuedSingleUpdates.size(); ++i) {
-        const QGeoPositionInfo info = queuedSingleUpdates[i];
-
+    auto byAccuracy = [](const QGeoPositionInfo &info, const QGeoPositionInfo &best) {
         //anything newer by 20s is always better
         const qint64 timeDelta = best.timestamp().secsTo(info.timestamp());
-        if (abs(timeDelta) > 20) {
-            if (timeDelta > 0)
-                best = info;
-            continue;
-        }
+        if (abs(timeDelta) > 20)
+            return timeDelta > 0;
 
         //compare accuracy
         if (info.hasAttribute(QGeoPositionInfo::HorizontalAccuracy) &&
                 best.hasAttribute(QGeoPositionInfo::HorizontalAccuracy))
         {
-            best = info.attribute(QGeoPositionInfo::HorizontalAccuracy) <
-                    best.attribute(QGeoPositionInfo::HorizontalAccuracy) ? info : best;
-            continue;
+            return info.attribute(QGeoPositionInfo::HorizontalAccuracy) <
+                    best.attribute(QGeoPositionInfo::HorizontalAccuracy);
         }
 
         //prefer info with accuracy information
         if (info.hasAttribute(QGeoPositionInfo::HorizontalAccuracy))
-            best = info;
-    }
+            return true;
 
+        return false;
+    };
+
+    QGeoPositionInfo best = *std::min_element(queuedSingleUpdates.begin(),
+                                              queuedSingleUpdates.end(), byAccuracy);
     queuedSingleUpdates.clear();
     emit positionUpdated(best);
 }

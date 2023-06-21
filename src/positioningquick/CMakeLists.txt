@@ -11,6 +11,8 @@ qt_internal_add_qml_module(PositioningQuick
     NO_GENERATE_PLUGIN_SOURCE
     NO_PLUGIN_OPTIONAL
     CLASS_NAME QtPositioningDeclarativeModule
+    DEPENDENCIES
+        QtQuick/auto
     SOURCES
         qdeclarativegeoaddress_p.h qdeclarativegeoaddress.cpp
         qdeclarativegeolocation_p.h qdeclarativegeolocation.cpp
@@ -22,7 +24,7 @@ qt_internal_add_qml_module(PositioningQuick
         qquickgeocoordinateanimation_p_p.h
         qpositioningquickglobal.h
         qpositioningquickglobal_p.h
-        qpositioningquickmodule_p.h
+        qpositioningquickmodule_p.h qpositioningquickmodule.cpp
     LIBRARIES
         Qt::PositioningPrivate
         Qt::QuickPrivate
@@ -34,6 +36,8 @@ qt_internal_add_qml_module(PositioningQuick
     PRIVATE_MODULE_INTERFACE
         Qt::PositioningPrivate
         Qt::QuickPrivate
+    GENERATE_CPP_EXPORTS
+    GENERATE_PRIVATE_CPP_EXPORTS
 )
 
 qt_internal_extend_target(positioningquickplugin

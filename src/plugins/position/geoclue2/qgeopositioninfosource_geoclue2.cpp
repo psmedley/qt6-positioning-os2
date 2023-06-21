@@ -47,7 +47,10 @@
 
 // Auto-generated D-Bus files.
 #include <client_interface.h>
+#include "moc_client_interface.cpp" // includemocs
 #include <location_interface.h>
+#include "moc_location_interface.cpp" // includemocs
+#include "moc_manager_interface.cpp" // includemocs
 
 Q_DECLARE_LOGGING_CATEGORY(lcPositioningGeoclue2)
 
@@ -459,3 +462,5 @@ void QGeoPositionInfoSourceGeoclue2::parseParameters(const QVariantMap &paramete
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qgeopositioninfosource_geoclue2_p.cpp"

@@ -288,9 +288,11 @@ void QDeclarativePositionSource::tryAttach(const QString &newName, bool useFallb
         m_positionSource->setPreferredPositioningMethods(
             static_cast<QGeoPositionInfoSource::PositioningMethods>(int(m_preferredPositioningMethods)));
 
-        const QGeoPositionInfo &lastKnown = m_positionSource->lastKnownPosition();
-        if (lastKnown.isValid())
-            setPosition(lastKnown);
+        if (m_active) {
+            const QGeoPositionInfo &lastKnown = m_positionSource->lastKnownPosition();
+            if (lastKnown.isValid())
+                setPosition(lastKnown);
+        }
     } else {
         m_sourceName.setValueBypassingBindings(newName);
         m_defaultSourceUsed = false;
@@ -441,10 +443,8 @@ QVariantMap QDeclarativePositionSource::parameterMap() const
 {
     QVariantMap map;
 
-    for (int i = 0; i < m_parameters.size(); ++i) {
-        QDeclarativePluginParameter *parameter = m_parameters.at(i);
+    for (const auto *parameter : m_parameters)
         map.insert(parameter->name(), parameter->value());
-    }
 
     return map;
 }
@@ -915,3 +915,5 @@ void QDeclarativePositionSource::sourceErrorReceived(const QGeoPositionInfoSourc
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qdeclarativepositionsource_p.cpp"

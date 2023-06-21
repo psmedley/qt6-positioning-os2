@@ -195,8 +195,11 @@ namespace AndroidPositioning {
 
     void unregisterPositionInfoSource(int key)
     {
-        idToPosSource()->remove(key);
-        idToSatSource()->remove(key);
+        if (idToPosSource.exists())
+            idToPosSource->remove(key);
+
+        if (idToSatSource.exists())
+            idToSatSource->remove(key);
     }
 
     enum PositionProvider
@@ -298,6 +301,14 @@ namespace AndroidPositioning {
             const jfloat bearing = jniObject.callMethod<jfloat>("getBearing");
             if (!qFuzzyIsNull(bearing))
                 info.setAttribute(QGeoPositionInfo::Direction, qreal(bearing));
+
+            // bearingAccuracy is available in API Level 26+
+            if (QNativeInterface::QAndroidApplication::sdkVersion() > 25) {
+                const jfloat bearingAccuracy =
+                        jniObject.callMethod<jfloat>("getBearingAccuracyDegrees");
+                if (!qFuzzyIsNull(bearingAccuracy))
+                    info.setAttribute(QGeoPositionInfo::DirectionAccuracy, qreal(bearingAccuracy));
+            }
         }
 
         return info;

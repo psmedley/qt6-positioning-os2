@@ -17,6 +17,7 @@ qt_internal_add_plugin(QGeoPositionInfoSourceFactoryPollPlugin
     LIBRARIES
         Qt::Core
         Qt::Positioning
+    OS2_SHORT_NAME Qt6pospol
 )
 
 #### Keys ignored in scope 1:.:.:positionpoll.pro:<TRUE>:

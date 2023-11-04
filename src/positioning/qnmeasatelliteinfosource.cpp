@@ -119,7 +119,7 @@ void QNmeaSatelliteInfoSourcePrivate::processNmeaData(QNmeaSatelliteInfoUpdate &
         if (res) {
             updateInfo.gsa = QByteArray(buf, size);
             auto &info = updateInfo.m_satellites[satSystemType];
-            if (info.satellitesInUse.size()) {
+            if (!info.satellitesInUse.isEmpty()) {
                 for (auto &s : info.satellitesInUse) {
                     static_cast<QGeoSatelliteInfoPrivateNmea *>(QGeoSatelliteInfoPrivate::get(s))
                             ->nmeaSentences.append(updateInfo.gsa);
@@ -907,3 +907,6 @@ int QNmeaSatelliteSimulationReader::updateInterval() const
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qnmeasatelliteinfosource_p.cpp"
+#include "moc_qnmeasatelliteinfosource.cpp"

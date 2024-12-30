@@ -5,8 +5,6 @@ project           = QtPositioning
 description    = Qt Positioning Reference Documentation
 version          = $QT_VERSION
 
-
-
 qhp.projects            = QtPositioning
 
 qhp.QtPositioning.file                = qtpositioning.qhp
@@ -30,7 +28,16 @@ qhp.QtPositioning.subprojects.examples.selectors = fake:example
 
 tagfile                 = ../../../doc/qtpositioning/qtpositioning.tags
 
-depends += qtcore qtdoc qtquick qtqml qtnetwork qtqmlxmllistmodel qmake qtcmake
+depends += qtcore \
+           qtdoc \
+           qtquick \
+           qtqml \
+           qtnetwork \
+           qtqmlxmllistmodel \
+           qmake \
+           qtcmake \
+           qtserialport \
+           qtlocation
 
 headerdirs  += .. \
                 ../../positioningquick
@@ -51,3 +58,6 @@ navigation.cppclassespage = "Qt Positioning C++ Classes"
 navigation.qmltypespage = "Qt Positioning QML Types"
 
 manifestmeta.thumbnail.names += "QtPositioning/Log File*"
+manifestmeta.highlighted.names = \
+    "QtPositioning/SatelliteInfo (C++/QML)" \
+    "QtPositioning/Weather Info (C++/QML)"

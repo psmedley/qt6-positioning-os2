@@ -6,7 +6,8 @@
 
 QGeoPositionInfoSource *QGeoPositionInfoSourceFactoryCL::positionInfoSource(QObject *parent, const QVariantMap &parameters)
 {
-    return new QGeoPositionInfoSourceCL(parameters, parent);
+    Q_UNUSED(parameters)
+    return new QGeoPositionInfoSourceCL(parent);
 }
 
 QGeoSatelliteInfoSource *QGeoPositionInfoSourceFactoryCL::satelliteInfoSource(QObject *parent, const QVariantMap &parameters)

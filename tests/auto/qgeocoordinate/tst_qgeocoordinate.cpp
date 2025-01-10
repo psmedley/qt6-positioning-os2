@@ -1,5 +1,5 @@
 // Copyright (C) 2016 The Qt Company Ltd.
-// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only WITH Qt-GPL-exception-1.0
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 //TESTED_COMPONENT=src/location
 
@@ -758,7 +758,7 @@ private slots:
                 << QString("-27%1 28' 3.3\", 153%1 1' 40.4\", 28.2341m").arg(DEGREES_SYMB);
         QTest::newRow("SE with alt, dms, hemisphere, 28.2341m")
                 << southEastWithAlt << QGeoCoordinate::DegreesMinutesSecondsWithHemisphere
-                << QString("27%1 28' 3.3\" S, 153%1 1' 40.4\" E, 28.2341m").arg(DEGREES_SYMB);;
+                << QString("27%1 28' 3.3\" S, 153%1 1' 40.4\" E, 28.2341m").arg(DEGREES_SYMB);
 
         QTest::newRow("NW, dd, no hemisphere")
                 << northWest << QGeoCoordinate::Degrees

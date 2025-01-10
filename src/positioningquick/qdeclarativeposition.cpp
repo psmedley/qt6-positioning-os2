@@ -12,7 +12,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \qmltype Position
-    //! \instantiates QDeclarativePosition
+    //! \nativetype QDeclarativePosition
     \inqmlmodule QtPositioning
     \since 5.2
 
@@ -40,7 +40,7 @@ QT_BEGIN_NAMESPACE
     \section2 Example Usage
 
     See the example given for the \l {PositionSource} type, or the
-    \l {satelliteinfo}{SatelliteInfo} example application.
+    \l {Satellite Info} example application.
 
     \sa PositionSource, coordinate
 */

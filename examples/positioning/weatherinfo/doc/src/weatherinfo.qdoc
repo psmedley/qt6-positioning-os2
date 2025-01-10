@@ -3,11 +3,13 @@
 
 /*!
     \example weatherinfo
-    \title Weather Info (C++/QML)
+    \title Weather Info
     \examplecategory {Positioning & Location}
+    \meta tags {c++, qml, quick}
 
     \brief The Weather Info example shows how to use the user's current position
-           to retrieve local content from a web service in a C++ plugin for QML.
+    to retrieve local content from a web service in a C++ plugin for \l{Qt Quick},
+    using \l{Qt Positioning}.
 
     \ingroup qtpositioning-examples
 
@@ -128,17 +130,4 @@
 
     \snippet weatherinfo/WeatherInfo.qml 3
     \snippet weatherinfo/WeatherInfo.qml 4
-
-    \section1 Files and Attributions
-
-    The example bundles the following images from Third-Party sources:
-
-    \table
-    \row
-        \li \l{weatherinfo-tango-icons}{Tango Icons}
-        \li Public Domain
-    \row
-        \li \l{weatherinfo-tango-weather-pack}{Tango Weather Icon Pack by Darkobra}
-        \li Public Domain
-    \endtable
 */

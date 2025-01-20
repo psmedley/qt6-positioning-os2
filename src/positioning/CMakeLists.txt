@@ -47,6 +47,7 @@ qt_internal_add_module(Positioning
         Qt::CorePrivate
     DEFINES
         QT_NO_CONTEXTLESS_CONNECT
+    OS2_SHORT_NAME Qt6Posit
 )
 
 if(ANDROID)

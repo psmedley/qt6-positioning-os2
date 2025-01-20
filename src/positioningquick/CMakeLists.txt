@@ -36,6 +36,7 @@ qt_internal_add_qml_module(PositioningQuick
     PRIVATE_MODULE_INTERFACE
         Qt::PositioningPrivate
         Qt::QuickPrivate
+    OS2_SHORT_NAME Qt6PosQk
 )
 
 qt_internal_extend_target(positioningquickplugin

@@ -42,6 +42,7 @@ qt_internal_add_module(Positioning
         Qt::Core
     PRIVATE_MODULE_INTERFACE
         Qt::CorePrivate
+    OS2_SHORT_NAME Qt6Posit
 )
 
 if(ANDROID)

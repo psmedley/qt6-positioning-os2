@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2018 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2018 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #ifndef QGEOPOLYGON_P_H
 #define QGEOPOLYGON_P_H
@@ -57,54 +22,56 @@
 
 QT_BEGIN_NAMESPACE
 
-class Q_POSITIONING_PRIVATE_EXPORT QGeoPolygonPrivate : public QGeoPathPrivate
+class Q_POSITIONING_EXPORT QGeoPolygonPrivate : public QGeoPathPrivateBase
 {
 public:
     QGeoPolygonPrivate();
     QGeoPolygonPrivate(const QList<QGeoCoordinate> &path);
+    QGeoPolygonPrivate(const QGeoPolygonPrivate &other);
     ~QGeoPolygonPrivate();
 
 // QGeoShape API
-    virtual QGeoShapePrivate *clone() const override;
-    virtual bool isValid() const override;
-    virtual bool contains(const QGeoCoordinate &coordinate) const override;
-    virtual void translate(double degreesLatitude, double degreesLongitude) override;
-    virtual bool operator==(const QGeoShapePrivate &other) const override;
+    QGeoShapePrivate *clone() const override;
+    bool isValid() const override;
+    bool contains(const QGeoCoordinate &coordinate) const override;
+    void translate(double degreesLatitude, double degreesLongitude) override;
+    bool operator==(const QGeoShapePrivate &other) const override;
     size_t hash(size_t seed) const override;
 
-// QGeoPath API
-    virtual void markDirty() override;
+// QGeoPathPrivateBase API
+    void markDirty() override;
 
 // QGeoPolygonPrivate API
     qsizetype holesCount() const;
     bool polygonContains(const QGeoCoordinate &coordinate) const;
     const QList<QGeoCoordinate> holePath(qsizetype index) const;
 
-    virtual void addHole(const QList<QGeoCoordinate> &holePath);
-    virtual void removeHole(qsizetype index);
-    virtual void updateClipperPath();
+    void addHole(const QList<QGeoCoordinate> &holePath);
+    void removeHole(qsizetype index);
+    void ensureClipperPathUpdated() const;
 
 // data members
-    bool m_clipperDirty = true;
     QList<QList<QGeoCoordinate>> m_holesList;
-    QClipperUtils m_clipperWrapper;
+    mutable QClipperUtils m_clipperWrapper; // cached
+    mutable double m_leftBoundWrapped = 0.0; // cached
+    mutable std::atomic<bool> m_clipperDirty = true;
 };
 
-class Q_POSITIONING_PRIVATE_EXPORT QGeoPolygonPrivateEager : public QGeoPolygonPrivate
+class Q_POSITIONING_EXPORT QGeoPolygonPrivateEager final : public QGeoPolygonPrivate
 {
 public:
     QGeoPolygonPrivateEager();
     QGeoPolygonPrivateEager(const QList<QGeoCoordinate> &path);
+    QGeoPolygonPrivateEager(const QGeoPolygonPrivateEager &other);
     ~QGeoPolygonPrivateEager();
 
 // QGeoShape API
-    virtual QGeoShapePrivate *clone() const override;
-    virtual void translate(double degreesLatitude, double degreesLongitude) override;
+    QGeoShapePrivate *clone() const override;
+    void translate(double degreesLatitude, double degreesLongitude) override;
 
 // QGeoPath API
-    virtual void markDirty() override;
-    virtual void addCoordinate(const QGeoCoordinate &coordinate) override;
-    virtual void computeBoundingBox() override;
+    void markDirty() override;
+    void addCoordinate(const QGeoCoordinate &coordinate) override;
 
 // QGeoPolygonPrivate API
 
@@ -120,7 +87,7 @@ public:
 };
 
 // This is a mean of creating a QGeoPolygonPrivateEager and injecting it into QGeoPolygons via operator=
-class Q_POSITIONING_PRIVATE_EXPORT QGeoPolygonEager : public QGeoPolygon
+class Q_POSITIONING_EXPORT QGeoPolygonEager : public QGeoPolygon
 {
     Q_GADGET
 public:

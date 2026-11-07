@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #ifndef QNMESATELLITEINFOSOURCE_P_H
 #define QNMESATELLITEINFOSOURCE_P_H
@@ -60,10 +25,13 @@
 #include <QMap>
 #include <QtCore/qiodevice.h>
 #include <QtCore/qtimer.h>
+#include <QtCore/private/qglobal_p.h>
+
+#include <memory>
 
 QT_BEGIN_NAMESPACE
 
-#define USE_NMEA_PIMPL 1
+#define USE_SATELLITE_NMEA_PIMPL 1
 
 struct SatelliteInfo
 {
@@ -83,7 +51,7 @@ struct QNmeaSatelliteInfoUpdate
     bool m_validInView = false; // global state for all satellite systems
     bool m_validInUse = false; // global state for all satellite systems
     bool m_fresh = false;
-#if USE_NMEA_PIMPL
+#if USE_SATELLITE_NMEA_PIMPL
     QByteArray gsa;
     QList<QByteArray> gsv;
 #endif
@@ -132,7 +100,7 @@ public:
     bool m_connectedReadyRead = false;
     QBasicTimer *m_updateTimer = nullptr; // the timer used in startUpdates()
     QTimer *m_requestTimer = nullptr; // the timer used in requestUpdate()
-    QScopedPointer<QNmeaSatelliteReader> m_nmeaReader;
+    std::unique_ptr<QNmeaSatelliteReader> m_nmeaReader;
     QNmeaSatelliteInfoSource::UpdateMode m_updateMode;
     int m_simulationUpdateInterval = 100;
 
@@ -172,7 +140,7 @@ public:
     int updateInterval() const;
 
 private:
-    QScopedPointer<QTimer> m_timer;
+    std::unique_ptr<QTimer> m_timer;
     int m_updateInterval;
 };
 

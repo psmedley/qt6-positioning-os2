@@ -1,140 +1,47 @@
-/****************************************************************************
-**
-** Copyright (C) 2017 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the examples of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:BSD$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** BSD License Usage
-** Alternatively, you may use this file under the terms of the BSD license
-** as follows:
-**
-** "Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions are
-** met:
-**   * Redistributions of source code must retain the above copyright
-**     notice, this list of conditions and the following disclaimer.
-**   * Redistributions in binary form must reproduce the above copyright
-**     notice, this list of conditions and the following disclaimer in
-**     the documentation and/or other materials provided with the
-**     distribution.
-**   * Neither the name of The Qt Company Ltd nor the names of its
-**     contributors may be used to endorse or promote products derived
-**     from this software without specific prior written permission.
-**
-**
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2023 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
 
 #ifndef SATELLITEMODEL_H
 #define SATELLITEMODEL_H
 
 #include <QAbstractListModel>
-#include <QSet>
-#include <QtQml/qqml.h>
-#include <QtQml/QQmlParserStatus>
-#include <QtPositioning/QGeoSatelliteInfoSource>
+#include <QGeoSatelliteInfo>
+#include <QtQml/qqmlregistration.h>
 
-QT_FORWARD_DECLARE_CLASS(QTimer)
-QT_FORWARD_DECLARE_CLASS(QGeoSatelliteInfoSource)
+#include <utility>
 
 //! [0]
-class SatelliteModel : public QAbstractListModel, public QQmlParserStatus
+class SatelliteModel : public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(bool running READ running WRITE setRunning NOTIFY runningChanged)
-    Q_PROPERTY(bool satelliteInfoAvailable READ canProvideSatelliteInfo NOTIFY canProvideSatelliteInfoChanged)
-    Q_PROPERTY(int entryCount READ entryCount NOTIFY entryCountChanged)
-    Q_PROPERTY(bool singleRequestMode READ isSingleRequest WRITE setSingleRequest NOTIFY singleRequestChanged)
-    Q_INTERFACES(QQmlParserStatus)
+    Q_PROPERTY(int size READ rowCount NOTIFY sizeChanged)
     QML_ELEMENT
 public:
-    explicit SatelliteModel(QObject *parent = 0);
+    explicit SatelliteModel(QObject *parent = nullptr);
 
-    enum {
-        IdentifierRole = Qt::UserRole + 1,
-        InUseRole,
-        SignalStrengthRole,
-        ElevationRole,
-        AzimuthRole
-    };
-
-    //From QAbstractListModel
-    int rowCount(const QModelIndex &parent) const override;
-    QVariant data(const QModelIndex &index, int role) const override;
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    //From QQmlParserStatus
-    void classBegin() override {}
-    void componentComplete() override;
+public slots:
+    void updateSatellitesInView(const QList<QGeoSatelliteInfo> &inView);
+    void updateSatellitesInUse(const QList<QGeoSatelliteInfo> &inUse);
+
+signals:
+    void sizeChanged();
 //! [0]
 
-    bool running() const;
-    void setRunning(bool isActive);
-
-    bool isSingleRequest() const;
-    void setSingleRequest(bool single);
-
-    int entryCount() const;
-
-    bool canProvideSatelliteInfo() const;
-
-//! [1]
-signals:
-    void runningChanged();
-    void entryCountChanged();
-    void errorFound(int code);
-    void canProvideSatelliteInfoChanged();
-    void singleRequestChanged();
-
-public slots:
-    void clearModel();
-    void updateDemoData();
-//! [1]
-
-private slots:
-    void error(QGeoSatelliteInfoSource::Error);
-    void satellitesInViewUpdated(const QList<QGeoSatelliteInfo> &infos);
-    void satellitesInUseUpdated(const QList<QGeoSatelliteInfo> &infos);
-
 private:
-    QGeoSatelliteInfoSource *source;
-    bool m_componentCompleted;
-    bool m_running;
-    bool m_runningRequested;
-    QList <QGeoSatelliteInfo> knownSatellites;
-    QSet<int> knownSatelliteIds;
-    QSet<int> satellitesInUse;
-    bool demo;
-    QTimer *timer;
-    bool isSingle;
-    bool singleRequestServed;
-//! [2]
-};
-//! [2]
+    QList<QGeoSatelliteInfo> m_satellites;
 
-QML_DECLARE_TYPE(SatelliteModel)
+    using SatelliteId = int;
+    using SystemId = int;
+    using UniqueId = std::pair<SystemId, SatelliteId>;
+    static UniqueId getUid(const QGeoSatelliteInfo &info);
+    QSet<UniqueId> m_inUseIds;
+    QSet<UniqueId> m_allIds;
+//! [1]
+};
+//! [1]
 
 #endif // SATELLITEMODEL_H

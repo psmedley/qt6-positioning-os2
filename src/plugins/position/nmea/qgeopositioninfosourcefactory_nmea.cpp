@@ -1,47 +1,10 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:critical reason:data-parser
 
 #include "qgeopositioninfosourcefactory_nmea.h"
 #include <QtPositioning/QNmeaPositionInfoSource>
 #include <QtPositioning/QNmeaSatelliteInfoSource>
-#include <QtSerialPort/QSerialPort>
-#include <QtSerialPort/QSerialPortInfo>
 #include <QtNetwork/QTcpSocket>
 #include <QLoggingCategory>
 #include <QSet>
@@ -50,13 +13,25 @@
 #include <QSharedPointer>
 #include "qiopipe_p.h"
 
-Q_LOGGING_CATEGORY(lcNmea, "qt.positioning.nmea")
+#ifdef QT_NMEA_PLUGIN_HAS_SERIALPORT
+#  include <QtSerialPort/QSerialPort>
+#  include <QtSerialPort/QSerialPortInfo>
+#endif
+
+#include <memory>
 
 QT_BEGIN_NAMESPACE
+
+Q_STATIC_LOGGING_CATEGORY(lcNmea, "qt.positioning.nmea")
 
 static const auto sourceParameterName = QStringLiteral("nmea.source");
 static const auto socketScheme = QStringLiteral("socket:");
 static const auto serialScheme = QStringLiteral("serial:");
+
+static const auto baudRateParameterName = QStringLiteral("nmea.baudrate");
+static constexpr auto defaultBaudRate = 4800;
+
+#ifdef QT_NMEA_PLUGIN_HAS_SERIALPORT
 
 // This class is used only for SerialPort devices, because we can't open the
 // same serial port twice.
@@ -74,7 +49,7 @@ public:
     IODeviceContainer(IODeviceContainer const&) = delete;
     void operator=(IODeviceContainer const&)  = delete;
 
-    QSharedPointer<QIOPipe> serial(const QString &portName)
+    QSharedPointer<QIOPipe> serial(const QString &portName, qint32 baudRate)
     {
         if (m_serialPorts.contains(portName)) {
             m_serialPorts[portName].refs++;
@@ -84,8 +59,8 @@ public:
         }
         IODevice device;
         QSerialPort *port = new QSerialPort(portName);
-        port->setBaudRate(4800);
-        qCDebug(lcNmea) << "Opening serial port" << portName;
+        port->setBaudRate(baudRate);
+        qCDebug(lcNmea) << "Opening serial port" << portName << "with baudrate" << baudRate;
         if (!port->open(QIODevice::ReadOnly)) {
             qWarning("nmea: Failed to open %s", qPrintable(portName));
             delete port;
@@ -131,6 +106,27 @@ private:
 
 Q_GLOBAL_STATIC(IODeviceContainer, deviceContainer)
 
+#endif // QT_NMEA_PLUGIN_HAS_SERIALPORT
+
+struct NmeaParameters
+{
+    explicit NmeaParameters(const QVariantMap &parameters);
+
+    QString source;
+    qint32 baudRate = defaultBaudRate;
+};
+
+NmeaParameters::NmeaParameters(const QVariantMap &parameters)
+{
+    source = parameters.value(sourceParameterName).toString();
+    bool ok = false;
+    const auto br = parameters.value(baudRateParameterName).toInt(&ok);
+    // According to QSerialPort::setBaudRate() documentation, we can pick any
+    // positive number as a baud rate.
+    if (ok && br > 0)
+        baudRate = br;
+}
+
 // We use a string prefix to distinguish between the different data sources.
 // "socket:" means that we use a socket connection
 // "serial:" means that we use a serial port connection
@@ -148,29 +144,28 @@ public:
     ~NmeaSource() override;
     bool isValid() const
     {
-        return !m_dataSource.isNull() || !m_fileSource.isNull() || !m_socket.isNull();
+        return !m_dataSource.isNull() || m_fileSource || m_socket;
     }
 
 private slots:
     void onSocketError(QAbstractSocket::SocketError error);
 
 private:
-    void parseSourceParameter(const QString &source);
-    void addSerialDevice(const QString &requestedPort);
+    void processParameters(const NmeaParameters &parameters);
+    void addSerialDevice(const QString &requestedPort, quint32 baudRate);
     void setFileName(const QString &fileName);
     void connectSocket(const QString &source);
 
     QSharedPointer<QIOPipe> m_dataSource;
-    QScopedPointer<QFile> m_fileSource;
-    QScopedPointer<QTcpSocket> m_socket;
+    std::unique_ptr<QFile> m_fileSource;
+    std::unique_ptr<QTcpSocket> m_socket;
     QString m_sourceName;
 };
 
 NmeaSource::NmeaSource(QObject *parent, const QVariantMap &parameters)
     : QNmeaPositionInfoSource(RealTimeMode, parent)
 {
-    const QString source = parameters.value(sourceParameterName).toString();
-    parseSourceParameter(source);
+    processParameters(NmeaParameters(parameters));
 }
 
 NmeaSource::NmeaSource(QObject *parent, const QString &fileName)
@@ -181,8 +176,10 @@ NmeaSource::NmeaSource(QObject *parent, const QString &fileName)
 
 NmeaSource::~NmeaSource()
 {
+#ifdef QT_NMEA_PLUGIN_HAS_SERIALPORT
     if (deviceContainer.exists())
         deviceContainer->releaseSerial(m_sourceName, m_dataSource);
+#endif
 }
 
 void NmeaSource::onSocketError(QAbstractSocket::SocketError error)
@@ -207,24 +204,25 @@ void NmeaSource::onSocketError(QAbstractSocket::SocketError error)
     }
 }
 
-void NmeaSource::parseSourceParameter(const QString &source)
+void NmeaSource::processParameters(const NmeaParameters &parameters)
 {
-    if (source.startsWith(socketScheme)) {
+    if (parameters.source.startsWith(socketScheme)) {
         // This is a socket
-        connectSocket(source);
+        connectSocket(parameters.source);
     } else {
         // Last chance - this can be serial device.
         // Note: File is handled in a separate case.
-        addSerialDevice(source);
+        addSerialDevice(parameters.source, parameters.baudRate);
     }
 }
 
+#ifdef QT_NMEA_PLUGIN_HAS_SERIALPORT
 static QString tryFindSerialDevice(const QString &requestedPort)
 {
     QString portName;
     if (requestedPort.isEmpty()) {
         const QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
-        qCDebug(lcNmea) << "Found" << ports.count() << "serial ports";
+        qCDebug(lcNmea) << "Found" << ports.size() << "serial ports";
         if (ports.isEmpty()) {
             qWarning("nmea: No serial ports found");
             return portName;
@@ -251,18 +249,27 @@ static QString tryFindSerialDevice(const QString &requestedPort)
     }
     return portName;
 }
+#endif // QT_NMEA_PLUGIN_HAS_SERIALPORT
 
-void NmeaSource::addSerialDevice(const QString &requestedPort)
+void NmeaSource::addSerialDevice(const QString &requestedPort, quint32 baudRate)
 {
+#ifdef QT_NMEA_PLUGIN_HAS_SERIALPORT
     m_sourceName = tryFindSerialDevice(requestedPort);
     if (m_sourceName.isEmpty())
         return;
 
-    m_dataSource = deviceContainer->serial(m_sourceName);
+    m_dataSource = deviceContainer->serial(m_sourceName, baudRate);
     if (!m_dataSource)
         return;
 
     setDevice(m_dataSource.data());
+#else
+    Q_UNUSED(baudRate);
+    // As we are not calling setDevice(), the source will be invalid, so
+    // the factory methods will return nullptr.
+    qWarning() << "Plugin was built without serialport support!"
+               << requestedPort << "cannot be used!";
+#endif
 }
 
 void NmeaSource::setFileName(const QString &fileName)
@@ -281,7 +288,7 @@ void NmeaSource::setFileName(const QString &fileName)
 
     qCDebug(lcNmea) << "Opened successfully";
 
-    setDevice(m_fileSource.data());
+    setDevice(m_fileSource.get());
 }
 
 void NmeaSource::connectSocket(const QString &source)
@@ -296,7 +303,7 @@ void NmeaSource::connectSocket(const QString &source)
         m_socket->connectToHost(host, port, QTcpSocket::ReadOnly);
         m_sourceName = source;
 
-        setDevice(m_socket.data());
+        setDevice(m_socket.get());
     } else {
         qWarning("nmea: incorrect socket parameters %s:%d", qPrintable(host), port);
     }
@@ -310,26 +317,25 @@ public:
     NmeaSatelliteSource(QObject *parent, const QString &fileName, const QVariantMap &parameters);
     ~NmeaSatelliteSource();
 
-    bool isValid() const { return !m_port.isNull() || !m_file.isNull() || !m_socket.isNull(); }
+    bool isValid() const { return !m_port.isNull() || m_file || m_socket; }
 
 private slots:
     void onSocketError(QAbstractSocket::SocketError error);
 
 private:
-    void parseRealtimeSource(const QString &source);
+    void processRealtimeParameters(const NmeaParameters &parameters);
     void parseSimulationSource(const QString &localFileName);
 
     QSharedPointer<QIOPipe> m_port;
-    QScopedPointer<QFile> m_file;
-    QScopedPointer<QTcpSocket> m_socket;
+    std::unique_ptr<QFile> m_file;
+    std::unique_ptr<QTcpSocket> m_socket;
     QString m_sourceName;
 };
 
 NmeaSatelliteSource::NmeaSatelliteSource(QObject *parent, const QVariantMap &parameters)
     : QNmeaSatelliteInfoSource(QNmeaSatelliteInfoSource::UpdateMode::RealTimeMode, parent)
 {
-    const QString source = parameters.value(sourceParameterName).toString();
-    parseRealtimeSource(source);
+    processRealtimeParameters(NmeaParameters(parameters));
 }
 
 // We can use a QNmeaSatelliteInfoSource::SimulationUpdateInterval parameter to
@@ -350,8 +356,10 @@ NmeaSatelliteSource::NmeaSatelliteSource(QObject *parent, const QString &fileNam
 
 NmeaSatelliteSource::~NmeaSatelliteSource()
 {
+#ifdef QT_NMEA_PLUGIN_HAS_SERIALPORT
     if (deviceContainer.exists())
         deviceContainer->releaseSerial(m_sourceName, m_port);
+#endif
 }
 
 void NmeaSatelliteSource::onSocketError(QAbstractSocket::SocketError error)
@@ -376,8 +384,9 @@ void NmeaSatelliteSource::onSocketError(QAbstractSocket::SocketError error)
     }
 }
 
-void NmeaSatelliteSource::parseRealtimeSource(const QString &source)
+void NmeaSatelliteSource::processRealtimeParameters(const NmeaParameters &parameters)
 {
+    const QString source = parameters.source;
     if (source.startsWith(socketScheme)) {
         // This is a socket.
         const QUrl url(source);
@@ -391,21 +400,28 @@ void NmeaSatelliteSource::parseRealtimeSource(const QString &source)
             m_socket->connectToHost(host, port, QTcpSocket::ReadOnly);
             m_sourceName = source;
 
-            setDevice(m_socket.data());
+            setDevice(m_socket.get());
         } else {
             qWarning("nmea: incorrect socket parameters %s:%d", qPrintable(host), port);
         }
     } else {
+#ifdef QT_NMEA_PLUGIN_HAS_SERIALPORT
         // Last chance - this can be serial device.
         m_sourceName = tryFindSerialDevice(source);
         if (m_sourceName.isEmpty())
             return;
 
-        m_port = deviceContainer->serial(m_sourceName);
+        m_port = deviceContainer->serial(m_sourceName, parameters.baudRate);
         if (!m_port)
             return;
 
         setDevice(m_port.data());
+#else
+        // As we are not calling setDevice(), the source will be invalid, so
+        // the factory methods will return nullptr.
+        qWarning() << "Plugin was built without serialport support!"
+                   << source << "cannot be used!";
+#endif // QT_NMEA_PLUGIN_HAS_SERIALPORT
     }
 }
 
@@ -423,7 +439,7 @@ void NmeaSatelliteSource::parseSimulationSource(const QString &localFileName)
     }
     qCDebug(lcNmea) << "Opened successfully";
 
-    setDevice(m_file.data());
+    setDevice(m_file.get());
 }
 
 /*!

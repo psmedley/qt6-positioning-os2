@@ -1,61 +1,19 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the examples of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:BSD$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** BSD License Usage
-** Alternatively, you may use this file under the terms of the BSD license
-** as follows:
-**
-** "Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions are
-** met:
-**   * Redistributions of source code must retain the above copyright
-**     notice, this list of conditions and the following disclaimer.
-**   * Redistributions in binary form must reproduce the above copyright
-**     notice, this list of conditions and the following disclaimer in
-**     the documentation and/or other materials provided with the
-**     distribution.
-**   * Neither the name of The Qt Company Ltd nor the names of its
-**     contributors may be used to endorse or promote products derived
-**     from this software without specific prior written permission.
-**
-**
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
 
 #include "appmodel.h"
+#include "openmeteobackend.h"
 #include "openweathermapbackend.h"
 #include "weatherapibackend.h"
 
-#include <QGeoPositionInfoSource>
-#include <QGeoPositionInfo>
-#include <QGeoCircle>
-#include <QLoggingCategory>
+#include <QtPositioning/qgeocircle.h>
+#include <QtPositioning/qgeocoordinate.h>
+#if QT_CONFIG(permissions)
+#include <QtCore/qpermissions.h>
+#endif
+#include <QtCore/qcoreapplication.h>
+#include <QtCore/qloggingcategory.h>
+#include <QtCore/qtimer.h>
 
 Q_LOGGING_CATEGORY(requestsLog, "wapp.requests")
 
@@ -87,15 +45,6 @@ QString WeatherData::dayOfWeek() const
     return m_dayOfWeek;
 }
 
-/*!
- * The icon value is based on OpenWeatherMap.org icon set. For details
- * see http://bugs.openweathermap.org/projects/api/wiki/Weather_Condition_Codes
- *
- * e.g. 01d ->sunny day
- *
- * The icon string will be translated to
- * http://openweathermap.org/img/w/01d.png
- */
 QString WeatherData::weatherIcon() const
 {
     return m_weather;
@@ -189,7 +138,8 @@ WeatherDataCache::WeatherDataPair WeatherDataCache::getWeatherData(const QString
     return qMakePair(QString(), QList<WeatherInfo>());
 }
 
-WeatherDataCache::WeatherDataPair WeatherDataCache::getWeatherData(const QGeoCoordinate &coordinate) const
+WeatherDataCache::WeatherDataPair
+WeatherDataCache::getWeatherData(const QGeoCoordinate &coordinate) const
 {
     if (m_gpsLocation.isValid() && !m_gpsName.isEmpty()) {
         const QGeoCircle area(m_gpsLocation, kCircleRadius);
@@ -202,7 +152,8 @@ WeatherDataCache::WeatherDataPair WeatherDataCache::getWeatherData(const QGeoCoo
     return qMakePair(QString(), QList<WeatherInfo>());
 }
 
-void WeatherDataCache::addCacheElement(const LocationInfo &location, const QList<WeatherInfo> &info)
+void WeatherDataCache::addCacheElement(const LocationInfo &location,
+                                       const QList<WeatherInfo> &info)
 {
     // It it expected that we have valid QGeoCoordinate only when the weather
     // is received based on coordinates.
@@ -274,6 +225,7 @@ AppModel::AppModel(QObject *parent) :
 
     d->m_supportedBackends.push_back(new OpenWeatherMapBackend(this));
     d->m_supportedBackends.push_back(new WeatherApiBackend(this));
+    d->m_supportedBackends.push_back(new OpenMeteoBackend(this));
     registerBackend(0);
 
 //! [1]
@@ -281,17 +233,46 @@ AppModel::AppModel(QObject *parent) :
 
     if (d->src) {
         d->useGps = true;
-        connect(d->src, SIGNAL(positionUpdated(QGeoPositionInfo)),
-                this, SLOT(positionUpdated(QGeoPositionInfo)));
-        connect(d->src, SIGNAL(errorOccurred(QGeoPositionInfoSource::Error)),
-                this, SLOT(positionError(QGeoPositionInfoSource::Error)));
+        connect(d->src, &QGeoPositionInfoSource::positionUpdated,
+                this, &AppModel::positionUpdated);
+        connect(d->src, &QGeoPositionInfoSource::errorOccurred,
+                this, &AppModel::positionError);
+#if QT_CONFIG(permissions)
+        QLocationPermission permission;
+        permission.setAccuracy(QLocationPermission::Precise);
+        permission.setAvailability(QLocationPermission::WhenInUse);
+
+        switch (qApp->checkPermission(permission)) {
+        case Qt::PermissionStatus::Undetermined:
+            qApp->requestPermission(permission, [this] (const QPermission& permission) {
+                if (permission.status() == Qt::PermissionStatus::Granted)
+                    d->src->startUpdates();
+                else
+                    positionError(QGeoPositionInfoSource::AccessError);
+            });
+            break;
+        case Qt::PermissionStatus::Denied:
+            qWarning("Location permission is denied");
+            positionError(QGeoPositionInfoSource::AccessError);
+            break;
+        case Qt::PermissionStatus::Granted:
+            d->src->startUpdates();
+            break;
+        }
+#else
         d->src->startUpdates();
+#endif
     } else {
         d->useGps = false;
         d->city = "Brisbane";
         emit cityChanged();
         requestWeatherByCity();
     }
+
+    QTimer *refreshTimer = new QTimer(this);
+    connect(refreshTimer, &QTimer::timeout, this, &AppModel::refreshWeather);
+    using namespace std::chrono;
+    refreshTimer->start(60s);
 }
 //! [1]
 
@@ -301,9 +282,7 @@ AppModel::~AppModel()
         d->src->stopUpdates();
     if (d->fcProp)
         delete d->fcProp;
-    foreach (WeatherData *inf, d->forecast)
-        delete inf;
-    d->forecast.clear();
+    qDeleteAll(d->forecast);
     delete d;
 }
 
@@ -380,8 +359,7 @@ bool AppModel::applyWeatherData(const QString &city, const QList<WeatherInfo> &w
     }
 
     // delete previous forecast
-    foreach (WeatherData *inf, d->forecast)
-        delete inf;
+    qDeleteAll(d->forecast);
     d->forecast.clear();
 
     // The first item in the list represents current weather.

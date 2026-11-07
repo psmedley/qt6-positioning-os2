@@ -1,3 +1,6 @@
+# Copyright (C) 2022 The Qt Company Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Generated from geoclue2.pro.
 
 #####################################################################
@@ -18,6 +21,7 @@ qt_internal_add_plugin(QGeoPositionInfoSourceFactoryGeoclue2Plugin
         org.freedesktop.GeoClue2.Manager.xml
     DBUS_INTERFACE_FLAGS
         -N -i geocluetypes.h # special case
+        --namespace QtPositioningPrivate
     INCLUDE_DIRECTORIES
         ${CMAKE_CURRENT_BINARY_DIR}
         core.location.includes

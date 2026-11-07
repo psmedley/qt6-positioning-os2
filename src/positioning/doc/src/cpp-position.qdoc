@@ -1,29 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2017 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the documentation of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:FDL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Free Documentation License Usage
-** Alternatively, this file may be used under the terms of the GNU Free
-** Documentation License version 1.3 as published by the Free Software
-** Foundation and appearing in the file included in the packaging of
-** this file. Please review the following information to ensure
-** the GNU Free Documentation License version 1.3 requirements
-** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2017 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GFDL-1.3-no-invariants-only
 
 /*!
 \page location-positioning-cpp.html
@@ -177,15 +153,17 @@ location data source.
 The \l {Log File Position Source (C++)} example demonstrates how to subclass
 \l QGeoPositionInfoSource to create a custom positioning source.
 
-
 \section1 Examples
 
-\section3 \b{Flickr Example}
+\section3 \b{Log File Position Source Example}
 
-The \l{GeoFlickr QML}{Flickr Example} uses the current location to download thumbnail
-images from Flickr relevant to the current location.
+The \l{Log File Position Source (C++)}{Log File Position Source} Example demonstrates
+how to subclass \l QGeoPositionInfoSource to create a custom positioning source.
 
+\section3 \b{Weather Info Example}
 
+The \l{Weather Info} example shows how to use the user's current
+position to retrieve local content from a web service in a C++ plugin for QML.
 
 \section1 Positioning Classes
 

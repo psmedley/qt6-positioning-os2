@@ -1,7 +1,17 @@
+# Copyright (C) 2022 The Qt Company Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Generated from gypsy.pro.
 
 cmake_minimum_required(VERSION 3.16)
 project(config_test_gypsy LANGUAGES C CXX)
+
+if(DEFINED QT_CONFIG_COMPILE_TEST_CMAKE_SYSTEM_PREFIX_PATH)
+    set(CMAKE_SYSTEM_PREFIX_PATH "${QT_CONFIG_COMPILE_TEST_CMAKE_SYSTEM_PREFIX_PATH}")
+endif()
+if(DEFINED QT_CONFIG_COMPILE_TEST_CMAKE_SYSTEM_FRAMEWORK_PATH)
+    set(CMAKE_SYSTEM_FRAMEWORK_PATH "${QT_CONFIG_COMPILE_TEST_CMAKE_SYSTEM_FRAMEWORK_PATH}")
+endif()
 
 foreach(p ${QT_CONFIG_COMPILE_TEST_PACKAGES})
     find_package(${p})

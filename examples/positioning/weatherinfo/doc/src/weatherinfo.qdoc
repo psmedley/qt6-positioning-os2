@@ -1,36 +1,15 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the documentation of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:FDL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Free Documentation License Usage
-** Alternatively, this file may be used under the terms of the GNU Free
-** Documentation License version 1.3 as published by the Free Software
-** Foundation and appearing in the file included in the packaging of
-** this file. Please review the following information to ensure
-** the GNU Free Documentation License version 1.3 requirements
-** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GFDL-1.3-no-invariants-only
 
 /*!
     \example weatherinfo
-    \title Weather Info (C++/QML)
+    \title Weather Info
+    \examplecategory {Positioning & Location}
+    \meta tags {c++, qml, quick}
 
     \brief The Weather Info example shows how to use the user's current position
-           to retrieve local content from a web service in a C++ plugin for QML.
+    to retrieve local content from a web service in a C++ plugin for \l{Qt Quick},
+    using \l{Qt Positioning}.
 
     \ingroup qtpositioning-examples
 
@@ -41,26 +20,27 @@
     \li \l{QGeoPositionInfoSource}
     \endlist
 
-    \image ../images/example-weatherinfo.png
+    \image ../images/example-weatherinfo.png {Sample weather info screen}
 
     \include examples-run.qdocinc
 
     \section1 Weather Data Providers
 
-    The example uses two unrelated weather data providers:
+    The example uses several unrelated weather data providers:
 
     \list
     \li \l {http://www.openweathermap.org}{OpenWeather}
     \li \l {https://www.weatherapi.com/}{WeatherAPI.com}
+    \li \l {https://open-meteo.com/}{Open-Meteo}
     \endlist
 
     The provider to be used is selected automatically at runtime and can be
     changed if the selected provider is not available. However, it can't be
     specified manually.
 
-    \note Free plans are used for both providers, which implies certain
+    \note Free plans are used for all providers, which implies certain
     limitations on the amount of weather requests. If the limits are exceeded,
-    the providers become temporary unavailable. When both providers are
+    the providers become temporary unavailable. When all providers are
     unavailable, the application would not be able to show any weather
     information. In this case it is required to wait until at least one of the
     providers becomes available again.
@@ -134,31 +114,20 @@
     \quotefromfile weatherinfo/weatherinfo.pro
     \skipto CONFIG
     \printuntil QML_IMPORT_MAJOR_VERSION
+    \skipto qml_resources.files
+    \printuntil RESOURCES
 
     \section1 Instantiate the Models in QML
 
     Finally, in the actual QML, we instantiate the \c {AppModel}:
 
-    \snippet weatherinfo/weatherinfo.qml 0
-    \snippet weatherinfo/weatherinfo.qml 1
-    \snippet weatherinfo/weatherinfo.qml 2
+    \snippet weatherinfo/WeatherInfo.qml 0
+    \snippet weatherinfo/WeatherInfo.qml 1
+    \snippet weatherinfo/WeatherInfo.qml 2
 
     Once the model is instantiated like this, we can use its properties
     elsewhere in the QML document:
 
-    \snippet weatherinfo/weatherinfo.qml 3
-    \snippet weatherinfo/weatherinfo.qml 4
-
-    \section1 Files and Attributions
-
-    The example bundles the following images from Third-Party sources:
-
-    \table
-    \row
-        \li \l{weatherinfo-tango-icons}{Tango Icons}
-        \li Public Domain
-    \row
-        \li \l{weatherinfo-tango-weather-pack}{Tango Weather Icon Pack by Darkobra}
-        \li Public Domain
-    \endtable
+    \snippet weatherinfo/WeatherInfo.qml 3
+    \snippet weatherinfo/WeatherInfo.qml 4
 */

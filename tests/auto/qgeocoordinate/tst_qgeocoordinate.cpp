@@ -1,30 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 //TESTED_COMPONENT=src/location
 
@@ -347,6 +322,8 @@ private slots:
                 << QGeoCoordinate(90, 0) << QGeoCoordinate(90, 45) << true;
         QTest::newRow("different longitudes at south pole are equal")
                 << QGeoCoordinate(-90, 0) << QGeoCoordinate(-90, 45) << true;
+        QTest::newRow("zero coordinate equals almost zero")
+                << QGeoCoordinate(0, 0, 0) << QGeoCoordinate(1.0e-30, 1.0e-30, 0) << true;
     }
 
     void type()
@@ -783,7 +760,7 @@ private slots:
                 << QString("-27%1 28' 3.3\", 153%1 1' 40.4\", 28.2341m").arg(DEGREES_SYMB);
         QTest::newRow("SE with alt, dms, hemisphere, 28.2341m")
                 << southEastWithAlt << QGeoCoordinate::DegreesMinutesSecondsWithHemisphere
-                << QString("27%1 28' 3.3\" S, 153%1 1' 40.4\" E, 28.2341m").arg(DEGREES_SYMB);;
+                << QString("27%1 28' 3.3\" S, 153%1 1' 40.4\" E, 28.2341m").arg(DEGREES_SYMB);
 
         QTest::newRow("NW, dd, no hemisphere")
                 << northWest << QGeoCoordinate::Degrees
@@ -957,21 +934,21 @@ private slots:
 
     void hash()
     {
-        uint s1 = qHash(QGeoCoordinate(1, 1, 2));
-        uint s2 = qHash(QGeoCoordinate(2, 1, 1));
-        uint s3 = qHash(QGeoCoordinate(1, 2, 1));
-        uint s10 = qHash(QGeoCoordinate(0, 0, 2));
-        uint s20 = qHash(QGeoCoordinate(2, 0, 0));
-        uint s30 = qHash(QGeoCoordinate(0, 2, 0));
-        uint s30NoAlt = qHash(QGeoCoordinate(0, 2));
-        uint s30WithSeed = qHash(QGeoCoordinate(0, 2, 0), 1);
-        uint nullCoordinate = qHash(QGeoCoordinate());
+        auto s1 = qHash(QGeoCoordinate(1, 1, 2));
+        auto s2 = qHash(QGeoCoordinate(2, 1, 1));
+        auto s3 = qHash(QGeoCoordinate(1, 2, 1));
+        auto s10 = qHash(QGeoCoordinate(0, 0, 2));
+        auto s20 = qHash(QGeoCoordinate(2, 0, 0));
+        auto s30 = qHash(QGeoCoordinate(0, 2, 0));
+        auto s30NoAlt = qHash(QGeoCoordinate(0, 2));
+        auto s30WithSeed = qHash(QGeoCoordinate(0, 2, 0), 1);
+        auto nullCoordinate = qHash(QGeoCoordinate());
 
-        uint north1 = qHash(QGeoCoordinate(90.0, 34.7, 0));
-        uint north2 = qHash(QGeoCoordinate(90.0, 180, 0));
+        auto north1 = qHash(QGeoCoordinate(90.0, 34.7, 0));
+        auto north2 = qHash(QGeoCoordinate(90.0, 180, 0));
 
-        uint south1 = qHash(QGeoCoordinate(90.0, 67.7, 34.0));
-        uint south2 = qHash(QGeoCoordinate(90.0, 111, 34.0));
+        auto south1 = qHash(QGeoCoordinate(90.0, 67.7, 34.0));
+        auto south2 = qHash(QGeoCoordinate(90.0, 111, 34.0));
 
         QVERIFY(s1 != s2);
         QVERIFY(s2 != s3);

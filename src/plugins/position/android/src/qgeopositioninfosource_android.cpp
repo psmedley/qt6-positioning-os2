@@ -1,54 +1,27 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "qgeopositioninfosource_android_p.h"
 #include "jnipositioning.h"
 #include <QGeoPositionInfo>
+#include <QVariantMap>
+
+using namespace Qt::StringLiterals;
 
 static constexpr int kUpdateFromColdStart = 2 * 60 * 1000;
 static constexpr int kRegularUpdatesTimerInterval = 30 * 1000;
 
-QGeoPositionInfoSourceAndroid::QGeoPositionInfoSourceAndroid(QObject *parent) :
+static constexpr auto kUseAltitudeConverter = "useMslAltitude"_L1;
+
+QGeoPositionInfoSourceAndroid::QGeoPositionInfoSourceAndroid(const QVariantMap &parameters,
+                                                             QObject *parent) :
     QGeoPositionInfoSource(parent)
 {
     androidClassKeyForUpdate = AndroidPositioning::registerPositionInfoSource(this);
     androidClassKeyForSingleRequest = AndroidPositioning::registerPositionInfoSource(this);
+
+    parseParameters(parameters);
 
     //by default use all methods
     setPreferredPositioningMethods(AllPositioningMethods);
@@ -91,7 +64,8 @@ void QGeoPositionInfoSourceAndroid::setUpdateInterval(int msec)
 
 QGeoPositionInfo QGeoPositionInfoSourceAndroid::lastKnownPosition(bool fromSatellitePositioningMethodsOnly) const
 {
-    return AndroidPositioning::lastKnownPosition(fromSatellitePositioningMethodsOnly);
+    return AndroidPositioning::lastKnownPosition(fromSatellitePositioningMethodsOnly,
+                                                 useAltitudeConverter());
 }
 
 QGeoPositionInfoSource::PositioningMethods QGeoPositionInfoSourceAndroid::supportedPositioningMethods() const
@@ -120,11 +94,21 @@ QGeoPositionInfoSource::Error QGeoPositionInfoSourceAndroid::error() const
     return m_error;
 }
 
+bool QGeoPositionInfoSourceAndroid::useAltitudeConverter() const
+{
+    return m_useAltitudeConverter;
+}
+
 void QGeoPositionInfoSourceAndroid::setError(Error error)
 {
     m_error = error;
     if (error != QGeoPositionInfoSource::NoError)
         emit QGeoPositionInfoSource::errorOccurred(m_error);
+}
+
+void QGeoPositionInfoSourceAndroid::parseParameters(const QVariantMap &parameters)
+{
+    m_useAltitudeConverter = parameters.value(kUseAltitudeConverter, false).toBool();
 }
 
 void QGeoPositionInfoSourceAndroid::startUpdates()
@@ -185,7 +169,8 @@ void QGeoPositionInfoSourceAndroid::requestUpdate(int timeout)
     if (updatesRunning && updateInterval() <= timeout)
         return;
 
-    QGeoPositionInfoSource::Error error = AndroidPositioning::requestUpdate(androidClassKeyForSingleRequest);
+    const QGeoPositionInfoSource::Error error =
+            AndroidPositioning::requestUpdate(androidClassKeyForSingleRequest, timeout);
     if (error != QGeoPositionInfoSource::NoError) {
         m_requestTimer.stop();
         setError(error);
@@ -250,33 +235,29 @@ void QGeoPositionInfoSourceAndroid::requestTimeout()
         return;
     }
 
-    //pick best
-    QGeoPositionInfo best = queuedSingleUpdates[0];
-    for (qsizetype i = 1; i < queuedSingleUpdates.size(); ++i) {
-        const QGeoPositionInfo info = queuedSingleUpdates[i];
-
+    auto byAccuracy = [](const QGeoPositionInfo &info, const QGeoPositionInfo &best) {
         //anything newer by 20s is always better
         const qint64 timeDelta = best.timestamp().secsTo(info.timestamp());
-        if (abs(timeDelta) > 20) {
-            if (timeDelta > 0)
-                best = info;
-            continue;
-        }
+        if (abs(timeDelta) > 20)
+            return timeDelta > 0;
 
         //compare accuracy
         if (info.hasAttribute(QGeoPositionInfo::HorizontalAccuracy) &&
                 best.hasAttribute(QGeoPositionInfo::HorizontalAccuracy))
         {
-            best = info.attribute(QGeoPositionInfo::HorizontalAccuracy) <
-                    best.attribute(QGeoPositionInfo::HorizontalAccuracy) ? info : best;
-            continue;
+            return info.attribute(QGeoPositionInfo::HorizontalAccuracy) <
+                    best.attribute(QGeoPositionInfo::HorizontalAccuracy);
         }
 
         //prefer info with accuracy information
         if (info.hasAttribute(QGeoPositionInfo::HorizontalAccuracy))
-            best = info;
-    }
+            return true;
 
+        return false;
+    };
+
+    QGeoPositionInfo best = *std::min_element(queuedSingleUpdates.begin(),
+                                              queuedSingleUpdates.end(), byAccuracy);
     queuedSingleUpdates.clear();
     emit positionUpdated(best);
 }

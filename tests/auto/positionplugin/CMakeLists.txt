@@ -1,3 +1,6 @@
+# Copyright (C) 2022 The Qt Company Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Generated from positionplugin.pro.
 
 #####################################################################
@@ -9,6 +12,7 @@ qt_internal_add_plugin(QGeoPositionInfoSourceFactoryTestPlugin
     CLASS_NAME QGeoPositionInfoSourceFactoryTest
     PLUGIN_TYPE position
     DEFAULT_IF FALSE
+    TEST_PLUGIN
     SOURCES
         plugin.cpp
     LIBRARIES

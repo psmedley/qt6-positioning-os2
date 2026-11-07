@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "qquickgeocoordinateanimation_p.h"
 #include "qquickgeocoordinateanimation_p_p.h"
@@ -55,16 +20,18 @@ QT_BEGIN_NAMESPACE
     \brief A PropertyAnimation for geo coordinate properties.
 
     A specialized \l{PropertyAnimation} that defines an animation
-    between two \l{coordinate}{coordinates}.
+    between two \l{geoCoordinate}{coordinates}.
 
-    By default, a \l{latitude} of the \l{coordinate} is animated in the direction of shortest
+    By default, a \l{geoCoordinate::latitude}{latitude} of the
+    \l geoCoordinate is animated in the direction of shortest
     (geodesic) distance between those coordinates. Since CoordinateAnimation uses Mercator
-    map projection, the \l{latitude} animation is always between -90 and 90 degrees.
-    The \l{longitude} animation path is not limited and can go over 180 degrees
-    in both west and east directions.
+    map projection, the \l{geoCoordinate::latitude}{latitude} animation
+    is always between -90 and 90 degrees.
+    The \l{geoCoordinate::longitude}{longitude} animation path is not
+    limited and can go over 180 degrees in both west and east directions.
 
-    The \l{direction} property can be set to specify the direction in which the \l{longitude}
-    animation should occur.
+    The \l{direction} property can be set to specify the direction in which the
+    \l{geoCoordinate::longitude}{longitude} animation should occur.
 
     \sa {Animation and Transitions in Qt Quick}
 */
@@ -243,18 +210,21 @@ void QQuickGeoCoordinateAnimation::setTo(const QGeoCoordinate &t)
 
 /*!
     \qmlproperty enumeration CoordinateAnimation::direction
-    This property holds the direction of the \l{longitude} animation of the \l{coordinate}.
 
-    Possible values are:
+    This property holds the direction of the
+    \l{geoCoordinate::longitude}{longitude} animation of the
+    \l geoCoordinate.
 
-    \list
-    \li CoordinateAnimation.Shortest (default) - the longitude animation goes in the direction
-        that produces the shortest animation path.
-    \li CoordinateAnimation.West - the longitude animation always goes into western direction
+    \value CoordinateAnimation.Shortest
+        The longitude animation goes in the direction
+        that produces the shortest animation path. This is the default.
+    \value CoordinateAnimation.West
+        The longitude animation always goes into western direction
         and may cross the date line.
-    \li CoordinateAnimation.East - the longitude animation always goes into eastern direction
+    \value CoordinateAnimation.East
+        The longitude animation always goes into eastern direction
         and may cross the date line.
-    \endlist
+
     \since 5.5
 */
 
@@ -269,7 +239,7 @@ void QQuickGeoCoordinateAnimation::setDirection(QQuickGeoCoordinateAnimation::Di
 {
     Q_D( QQuickGeoCoordinateAnimation);
     d->m_direction.removeBindingUnlessInWrapper();
-    if (d->m_direction.value() == direction)
+    if (d->m_direction.valueBypassingBindings() == direction)
         return;
 
     d->m_direction.setValueBypassingBindings(direction);

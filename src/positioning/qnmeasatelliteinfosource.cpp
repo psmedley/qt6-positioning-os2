@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2019 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2019 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "qnmeasatelliteinfosource.h"
 #include "private/qnmeasatelliteinfosource_p.h"
@@ -53,7 +18,7 @@
 
 QT_BEGIN_NAMESPACE
 
-#if USE_NMEA_PIMPL
+#if USE_SATELLITE_NMEA_PIMPL
 class QGeoSatelliteInfoPrivateNmea : public QGeoSatelliteInfoPrivate
 {
 public:
@@ -111,11 +76,15 @@ void QNmeaSatelliteInfoSourcePrivate::processNmeaData(QNmeaSatelliteInfoUpdate &
 {
     char buf[1024];
     qint64 size = m_device->readLine(buf, sizeof(buf));
+    if (size <= 0)
+        return;
+
     QList<int> satInUse;
-    const auto satSystemType = m_source->parseSatellitesInUseFromNmea(buf, size, satInUse);
+    const auto satSystemType = m_source->parseSatellitesInUseFromNmea(QByteArrayView{buf,static_cast<qsizetype>(size)},
+                                                                      satInUse);
     if (satSystemType != QGeoSatelliteInfo::Undefined) {
         const bool res = updateInfo.setSatellitesInUse(satSystemType, satInUse);
-#if USE_NMEA_PIMPL
+#if USE_SATELLITE_NMEA_PIMPL
         if (res) {
             updateInfo.gsa = QByteArray(buf, size);
             auto &info = updateInfo.m_satellites[satSystemType];
@@ -132,20 +101,20 @@ void QNmeaSatelliteInfoSourcePrivate::processNmeaData(QNmeaSatelliteInfoUpdate &
         }
 #else
         Q_UNUSED(res)
-#endif // USE_NMEA_PIMPL
+#endif // USE_SATELLITE_NMEA_PIMPL
     } else {
         // Here we have the assumption that multiple parts of GSV sentence
         // come one after another. At least this is how it should be.
         auto systemType = QGeoSatelliteInfo::Undefined;
         const auto parserStatus = m_source->parseSatelliteInfoFromNmea(
-                buf, size, updateInfo.m_satellitesInViewParsed, systemType);
+                QByteArrayView{buf,static_cast<qsizetype>(size)}, updateInfo.m_satellitesInViewParsed, systemType);
         if (parserStatus == QNmeaSatelliteInfoSource::PartiallyParsed) {
             updateInfo.m_satellites[systemType].updatingGSV = true;
-#if USE_NMEA_PIMPL
+#if USE_SATELLITE_NMEA_PIMPL
             updateInfo.gsv.append(QByteArray(buf, size));
 #endif
         } else if (parserStatus == QNmeaSatelliteInfoSource::FullyParsed) {
-#if USE_NMEA_PIMPL
+#if USE_SATELLITE_NMEA_PIMPL
             updateInfo.gsv.append(QByteArray(buf, size));
             for (int i = 0; i < updateInfo.m_satellitesInViewParsed.size(); i++) {
                 const QGeoSatelliteInfo &s = updateInfo.m_satellitesInViewParsed.at(i);
@@ -463,7 +432,7 @@ QNmeaSatelliteInfoSource::UpdateMode QNmeaSatelliteInfoSource::updateMode() cons
 
 /*!
     Sets the NMEA data source to \a device. If the device is not open, it
-    will be opened in QIODevice::ReadOnly mode.
+    will be opened in \l{QIODeviceBase::}{ReadOnly} mode.
 
     The source device can only be set once and must be set before calling
     \l startUpdates() or \l requestUpdate().
@@ -596,11 +565,29 @@ void QNmeaSatelliteInfoSource::requestUpdate(int msec)
     Returns system type if the sentence was successfully parsed, otherwise
     returns \l QGeoSatelliteInfo::Undefined and should not modifiy \a pnrsInUse.
 */
+
+#if QT_DEPRECATED_SINCE(7, 0)
 QGeoSatelliteInfo::SatelliteSystem
 QNmeaSatelliteInfoSource::parseSatellitesInUseFromNmea(const char *data, int size,
                                                        QList<int> &pnrsInUse)
 {
-    return QLocationUtils::getSatInUseFromNmea(data, size, pnrsInUse);
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
+    return QLocationUtils::getSatInUseFromNmea(QByteArrayView{data, size}, pnrsInUse);
+#else
+    return parseSatellitesInUseFromNmea(QByteArrayView{data, size}, pnrsInUse);
+#endif
+}
+#endif // QT_DEPRECATED_SINCE(7, 0)
+
+QGeoSatelliteInfo::SatelliteSystem
+QNmeaSatelliteInfoSource::parseSatellitesInUseFromNmea(QByteArrayView data,
+                                                       QList<int> &pnrsInUse)
+{
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
+    return parseSatellitesInUseFromNmea(data.data(), static_cast<int>(data.size()), pnrsInUse);
+#else
+    return QLocationUtils::getSatInUseFromNmea(data, pnrsInUse);
+#endif
 }
 
 /*!
@@ -631,13 +618,33 @@ QNmeaSatelliteInfoSource::parseSatellitesInUseFromNmea(const char *data, int siz
     Also sets the \a system to correct satellite system type. This is required
     to determine the system type in case there are no satellites in view.
 */
+
+#if QT_DEPRECATED_SINCE(7, 0)
 QNmeaSatelliteInfoSource::SatelliteInfoParseStatus
 QNmeaSatelliteInfoSource::parseSatelliteInfoFromNmea(const char *data, int size,
                                                      QList<QGeoSatelliteInfo> &infos,
                                                      QGeoSatelliteInfo::SatelliteSystem &system)
 {
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
     return static_cast<SatelliteInfoParseStatus>(
-            QLocationUtils::getSatInfoFromNmea(data, size, infos, system));
+            QLocationUtils::getSatInfoFromNmea(QByteArrayView{data, size}, infos, system));
+#else
+    return parseSatelliteInfoFromNmea(QByteArrayView{data, size}, infos, system);
+#endif
+}
+#endif // QT_DEPRECATED_SINCE(7, 0)
+
+QNmeaSatelliteInfoSource::SatelliteInfoParseStatus
+QNmeaSatelliteInfoSource::parseSatelliteInfoFromNmea(QByteArrayView data,
+                                                     QList<QGeoSatelliteInfo> &infos,
+                                                     QGeoSatelliteInfo::SatelliteSystem &system)
+{
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
+    return parseSatelliteInfoFromNmea(data.data(), static_cast<int>(data.size()), infos, system);
+#else
+    return static_cast<SatelliteInfoParseStatus>(
+            QLocationUtils::getSatInfoFromNmea(data, infos, system));
+#endif
 }
 
 void QNmeaSatelliteInfoSource::setError(QGeoSatelliteInfoSource::Error satelliteError)
@@ -701,9 +708,10 @@ void QNmeaSatelliteInfoUpdate::setSatellitesInView(QGeoSatelliteInfo::SatelliteS
         info.satellitesInUse.clear();
         info.validInUse = false;
         bool corrupt = false;
-        for (const auto id : info.inUseIds) {
+        const auto inUseIds = std::exchange(info.inUseIds, {});
+        for (const auto id : inUseIds) {
             bool found = false;
-            for (const auto &s : info.satellitesInView) {
+            for (const auto &s : std::as_const(info.satellitesInView)) {
                 if (s.satelliteIdentifier() == id) {
                     info.satellitesInUse.append(s);
                     found = true;
@@ -719,7 +727,6 @@ void QNmeaSatelliteInfoUpdate::setSatellitesInView(QGeoSatelliteInfo::SatelliteS
             }
         }
         info.validInUse = !corrupt;
-        info.inUseIds.clear();
     }
 
     m_validInUse = calculateValidInUse();
@@ -747,7 +754,7 @@ bool QNmeaSatelliteInfoUpdate::setSatellitesInUse(QGeoSatelliteInfo::SatelliteSy
 
     for (const auto id : inUse) {
         bool found = false;
-        for (const auto &s : info.satellitesInView) {
+        for (const auto &s : std::as_const(info.satellitesInView)) {
             if (s.satelliteIdentifier() == id) {
                 info.satellitesInUse.append(s);
                 found = true;
@@ -789,7 +796,7 @@ void QNmeaSatelliteInfoUpdate::clear()
     m_validInView = false;
     m_validInUse = false;
     m_fresh = false;
-#if USE_NMEA_PIMPL
+#if USE_SATELLITE_NMEA_PIMPL
     gsa.clear();
     gsv.clear();
 #endif
@@ -844,7 +851,7 @@ QNmeaSatelliteSimulationReader::QNmeaSatelliteSimulationReader(QNmeaSatelliteInf
     : QNmeaSatelliteReader(sourcePrivate)
 {
     m_timer.reset(new QTimer);
-    QObject::connect(m_timer.get(), &QTimer::timeout, [this]() {
+    QObject::connect(m_timer.get(), &QTimer::timeout, m_timer.get(), [this]() {
         readAvailableData();
     });
     m_updateInterval =

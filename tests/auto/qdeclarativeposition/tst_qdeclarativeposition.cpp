@@ -1,30 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 #include <QtTest/QtTest>
 #include <QtTest/private/qpropertytesthelper_p.h>
@@ -57,6 +32,8 @@ private slots:
     void verticalSpeedBinding();
     void magneticVariationValidBinding();
     void magneticVariationBinding();
+    void directionAccuracyBinding();
+    void directionAccuracyValidBinding();
 
 private:
     QDeclarativePosition m_declarativePosition;
@@ -69,7 +46,7 @@ void tst_QDeclarativePosition::initTestCase()
 {
     m_mutatorFunc = [&]() { m_declarativePosition.setPosition(m_positionInfo); };
     m_doubleComparator = [](const double &lhs, const double &rhs) {
-        return (qIsNaN(lhs) && qIsNaN(rhs)) || qFuzzyCompare(lhs, rhs);
+        return (qIsNaN(lhs) && qIsNaN(rhs)) || QtPrivate::fuzzyCompare(lhs, rhs);
     };
 }
 
@@ -218,7 +195,24 @@ void tst_QDeclarativePosition::magneticVariationBinding()
     m_positionInfo.setAttribute(QGeoPositionInfo::MagneticVariation, 10.0);
     QTestPrivate::testReadOnlyPropertyBasics<QDeclarativePosition, double>(
             m_declarativePosition, qQNaN(), 10.0, "magneticVariation", m_mutatorFunc,
+                m_doubleComparator);
+}
+
+void tst_QDeclarativePosition::directionAccuracyBinding()
+{
+    QCOMPARE(m_declarativePosition.directionAccuracy(), qQNaN());
+    m_positionInfo.setAttribute(QGeoPositionInfo::DirectionAccuracy, 10.0);
+    QTestPrivate::testReadOnlyPropertyBasics<QDeclarativePosition, double>(
+            m_declarativePosition, qQNaN(), 10.0, "directionAccuracy", m_mutatorFunc,
             m_doubleComparator);
+}
+
+void tst_QDeclarativePosition::directionAccuracyValidBinding()
+{
+    QCOMPARE(m_declarativePosition.isDirectionAccuracyValid(), false);
+    m_positionInfo.setAttribute(QGeoPositionInfo::DirectionAccuracy, 10.0);
+    QTestPrivate::testReadOnlyPropertyBasics<QDeclarativePosition, bool>(
+            m_declarativePosition, false, true, "directionAccuracyValid", m_mutatorFunc);
 }
 
 QTEST_GUILESS_MAIN(tst_QDeclarativePosition)

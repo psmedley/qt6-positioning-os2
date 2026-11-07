@@ -1,30 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 //TESTED_COMPONENT=src/location
 
@@ -45,13 +20,31 @@ public:
     DummyNmeaPositionInfoSource(QNmeaPositionInfoSource::UpdateMode mode, QObject *parent = 0);
 
 protected:
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
     bool parsePosInfoFromNmeaData(const char *data,
                                   int size,
                                   QGeoPositionInfo *posInfo,
-                                  bool *hasFix) override;
+                                  bool *hasFix)
+                                  QT6_ONLY(override)
+    {
+        return parsePosInfoFromNmeaDataImpl(QByteArrayView{data, size}, posInfo, hasFix);
+    }
+#else
+    bool parsePosInfoFromNmeaData(QByteArrayView data,
+                                  QGeoPositionInfo *posInfo,
+                                  bool *hasFix)
+                                  QT7_ONLY(override)
+    {
+        return parsePosInfoFromNmeaDataImpl(data, posInfo, hasFix);
+    }
+#endif
 
 private:
     int callCount;
+
+    bool parsePosInfoFromNmeaDataImpl(QByteArrayView data,
+                                      QGeoPositionInfo *posInfo,
+                                      bool *hasFix);
 };
 
 DummyNmeaPositionInfoSource::DummyNmeaPositionInfoSource(QNmeaPositionInfoSource::UpdateMode mode, QObject *parent) :
@@ -60,14 +53,11 @@ DummyNmeaPositionInfoSource::DummyNmeaPositionInfoSource(QNmeaPositionInfoSource
 {
 }
 
-bool DummyNmeaPositionInfoSource::parsePosInfoFromNmeaData(const char* data,
-                                                           int size,
-                                                           QGeoPositionInfo *posInfo,
-                                                           bool *hasFix)
+bool DummyNmeaPositionInfoSource::parsePosInfoFromNmeaDataImpl(QByteArrayView data,
+                                                               QGeoPositionInfo *posInfo,
+                                                               bool *hasFix)
 {
     Q_UNUSED(data);
-    Q_UNUSED(size);
-
     posInfo->setCoordinate(QGeoCoordinate(callCount * 1.0, callCount * 1.0, callCount * 1.0));
     posInfo->setTimestamp(QDateTime::currentDateTimeUtc());
     *hasFix = true;
@@ -112,7 +102,7 @@ void tst_DummyNmeaPositionInfoSource::testOverloadedParseFunction()
 
     proxy->feedBytes(QString("The parser converts\n").toLatin1());
 
-    QTRY_VERIFY_WITH_TIMEOUT((spy.count() == 1), 10000);
+    QTRY_VERIFY_WITH_TIMEOUT((spy.size() == 1), 10000);
     pos = spy.at(0).at(0).value<QGeoPositionInfo>();
 
     QVERIFY((pos.coordinate().latitude() == 0.0)
@@ -123,7 +113,7 @@ void tst_DummyNmeaPositionInfoSource::testOverloadedParseFunction()
 
     proxy->feedBytes(QString("any data it receives\n").toLatin1());
 
-    QTRY_VERIFY_WITH_TIMEOUT((spy.count() == 1), 10000);
+    QTRY_VERIFY_WITH_TIMEOUT((spy.size() == 1), 10000);
     pos = spy.at(0).at(0).value<QGeoPositionInfo>();
 
     QVERIFY((pos.coordinate().latitude() == 1.0)
@@ -134,7 +124,7 @@ void tst_DummyNmeaPositionInfoSource::testOverloadedParseFunction()
 
     proxy->feedBytes(QString("into positions\n").toLatin1());
 
-    QTRY_VERIFY_WITH_TIMEOUT((spy.count() == 1), 10000);
+    QTRY_VERIFY_WITH_TIMEOUT((spy.size() == 1), 10000);
     pos = spy.at(0).at(0).value<QGeoPositionInfo>();
 
     QVERIFY((pos.coordinate().latitude() == 2.0)

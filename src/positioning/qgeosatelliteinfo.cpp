@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 #include "qgeosatelliteinfo.h"
 #include "private/qgeosatelliteinfo_p.h"
 
@@ -44,6 +9,8 @@
 #include <QDataStream>
 
 QT_BEGIN_NAMESPACE
+
+QT_IMPL_METATYPE_EXTERN(QGeoSatelliteInfo)
 
 /*!
     \class QGeoSatelliteInfo
@@ -73,6 +40,8 @@ QT_BEGIN_NAMESPACE
     \value GALILEO Global navigation satellite system (EU).
     \value BEIDOU BeiDou navigation satellite system (China).
     \value QZSS Quasi-Zenith Satellite System (Japan).
+    \value [since 6.12] IRNSS Indian Regional Navigation Satellite System.
+    \value [since 6.12] SBAS Satellite-based augmentation system.
     \value Multiple This type normally indicates that the information is
            received from a device that supports multiple satellite systems, and
            the satellite system is not explicitly specified. Depending on the
@@ -168,6 +137,12 @@ QGeoSatelliteInfo &QGeoSatelliteInfo::operator=(const QGeoSatelliteInfo & other)
 */
 
 /*!
+    \fn void QGeoSatelliteInfo::swap(QGeoSatelliteInfo &other)
+    \since 6.2
+    \memberswap{satellite information}
+*/
+
+/*!
     Sets the Satellite System (GPS, GLONASS, ...) to \a system.
 */
 void QGeoSatelliteInfo::setSatelliteSystem(SatelliteSystem system)
@@ -177,12 +152,14 @@ void QGeoSatelliteInfo::setSatelliteSystem(SatelliteSystem system)
 }
 
 /*!
-    Returns the Satellite System (GPS, GLONASS, ...)
+    \property QGeoSatelliteInfo::satelliteSystem
+    \brief the satellite system in use, such as GPS or GLONASS.
 
-    \note This value can be used together with \l satelliteIdentifier()
+    Returns the Satellite System (GPS, GLONASS, ...)
+    \note This value can be used together with \l satelliteIdentifier
     to uniquely identify a satellite.
 
-    \sa satelliteIdentifier()
+    \sa satelliteIdentifier
 */
 QGeoSatelliteInfo::SatelliteSystem QGeoSatelliteInfo::satelliteSystem() const
 {
@@ -210,7 +187,8 @@ void QGeoSatelliteInfo::setSatelliteIdentifier(int satId)
 }
 
 /*!
-    Returns the satellite identifier number.
+    \property QGeoSatelliteInfo::satelliteIdentifier
+    \brief the satellite identifier number.
 
     The satellite identifier number can be used to identify a satellite within
     the satellite system.
@@ -232,6 +210,10 @@ void QGeoSatelliteInfo::setSatelliteIdentifier(int satId)
     identifier ranges for different satellite systems may intersect. To uniquely
     identify a satellite, a combination of satelliteIndetifier() and
     \l satelliteSystem() must be used.
+*/
+
+/*!
+    Returns the satellite identifier number.
 
     \sa satelliteSystem()
 */
@@ -250,6 +232,11 @@ void QGeoSatelliteInfo::setSignalStrength(int signalStrength)
 }
 
 /*!
+    \property QGeoSatelliteInfo::signalStrength
+    \brief the signal strength.
+*/
+
+/*!
     Returns the signal strength, or -1 if the value has not been set.
 */
 int QGeoSatelliteInfo::signalStrength() const
@@ -263,7 +250,7 @@ int QGeoSatelliteInfo::signalStrength() const
 void QGeoSatelliteInfo::setAttribute(Attribute attribute, qreal value)
 {
     d.detach();
-    d->doubleAttribs[int(attribute)] = value;
+    d->doubleAttribs[attribute] = value;
 }
 
 /*!
@@ -275,9 +262,7 @@ void QGeoSatelliteInfo::setAttribute(Attribute attribute, qreal value)
 */
 qreal QGeoSatelliteInfo::attribute(Attribute attribute) const
 {
-    if (d->doubleAttribs.contains(int(attribute)))
-        return d->doubleAttribs[int(attribute)];
-    return -1;
+    return d->doubleAttribs.value(attribute, -1);
 }
 
 /*!
@@ -285,8 +270,11 @@ qreal QGeoSatelliteInfo::attribute(Attribute attribute) const
 */
 void QGeoSatelliteInfo::removeAttribute(Attribute attribute)
 {
-    d.detach();
-    d->doubleAttribs.remove(int(attribute));
+    const auto it = d->doubleAttribs.constFind(attribute);
+    if (it != d->doubleAttribs.cend()) {
+        d.detach();
+        d->doubleAttribs.erase(it);
+    }
 }
 
 /*!
@@ -294,7 +282,7 @@ void QGeoSatelliteInfo::removeAttribute(Attribute attribute)
 */
 bool QGeoSatelliteInfo::hasAttribute(Attribute attribute) const
 {
-    return d->doubleAttribs.contains(int(attribute));
+    return d->doubleAttribs.contains(attribute);
 }
 
 /*!
@@ -322,8 +310,8 @@ QDebug QGeoSatelliteInfo::debugStreaming(QDebug dbg, const QGeoSatelliteInfo &in
     dbg << ", signal-strength=" << info.d->signal;
 
 
-    QList<int> attribs = info.d->doubleAttribs.keys();
-    for (int i = 0; i < attribs.count(); ++i) {
+    const QList<QGeoSatelliteInfo::Attribute> attribs = info.d->doubleAttribs.keys();
+    for (qsizetype i = 0; i < attribs.size(); ++i) {
         dbg << ", ";
         switch (attribs[i]) {
             case QGeoSatelliteInfo::Elevation:

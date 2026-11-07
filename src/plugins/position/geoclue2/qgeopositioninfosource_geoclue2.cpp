@@ -1,60 +1,26 @@
-/****************************************************************************
-**
-** Copyright (C) 2018 Denis Shienkov <denis.shienkov@gmail.com>
-** Contact: http://www.qt-project.org/legal
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2018 Denis Shienkov <denis.shienkov@gmail.com>
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "qgeopositioninfosource_geoclue2_p.h"
 
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QSaveFile>
-#include <QtCore/QScopedPointer>
 #include <QtCore/QTimer>
 #include <QtDBus/QDBusPendingCallWatcher>
 
 // Auto-generated D-Bus files.
-#include <client_interface.h>
-#include "moc_client_interface.cpp" // includemocs
-#include <location_interface.h>
-#include "moc_location_interface.cpp" // includemocs
-#include "moc_manager_interface.cpp" // includemocs
+#include <client_interface_p.h>
+#include "moc_client_interface_p.cpp" // includemocs
+#include <location_interface_p.h>
+#include "moc_location_interface_p.cpp" // includemocs
+#include "moc_manager_interface_p.cpp" // includemocs
 
 Q_DECLARE_LOGGING_CATEGORY(lcPositioningGeoclue2)
 
 QT_BEGIN_NAMESPACE
+
+using namespace QtPositioningPrivate;
 
 namespace {
 
@@ -250,15 +216,14 @@ void QGeoPositionInfoSourceGeoclue2::createClient()
 {
     const QDBusPendingReply<QDBusObjectPath> reply = m_manager.GetClient();
     const auto watcher = new QDBusPendingCallWatcher(reply, this);
-    connect(watcher, &QDBusPendingCallWatcher::finished,
+    connect(watcher, &QDBusPendingCallWatcher::finished, this,
             [this](QDBusPendingCallWatcher *watcher) {
-        const QScopedPointer<QDBusPendingCallWatcher, QScopedPointerDeleteLater>
-                scopedWatcher(watcher);
-        const QDBusPendingReply<QDBusObjectPath> reply = *scopedWatcher;
+        watcher->deleteLater();
+        const QDBusPendingReply<QDBusObjectPath> reply = *watcher;
         if (reply.isError()) {
             const auto error = reply.error();
-            qCWarning(lcPositioningGeoclue2) << "Unable to obtain the client patch:"
-                                             << error.name() + error.message();
+            qCWarning(lcPositioningGeoclue2) << "Unable to obtain the client:"
+                                             << error.name() << error.message();
             setError(AccessError);
         } else {
             const QString clientPath = reply.value().path();
@@ -274,8 +239,8 @@ void QGeoPositionInfoSourceGeoclue2::createClient()
                 const auto error = m_client->lastError();
                 qCCritical(lcPositioningGeoclue2) << "Unable to create the client object:"
                                                   << error.name() << error.message();
-                setError(AccessError);
                 delete m_client;
+                setError(AccessError);
             } else {
                 connect(m_client.data(), &OrgFreedesktopGeoClue2ClientInterface::LocationUpdated,
                         this, &QGeoPositionInfoSourceGeoclue2::handleNewLocation);
@@ -300,17 +265,18 @@ void QGeoPositionInfoSourceGeoclue2::startClient()
 
     const QDBusPendingReply<> reply = m_client->Start();
     const auto watcher = new QDBusPendingCallWatcher(reply, this);
-    connect(watcher, &QDBusPendingCallWatcher::finished,
+    connect(watcher, &QDBusPendingCallWatcher::finished, this,
             [this](QDBusPendingCallWatcher *watcher) {
-        const QScopedPointer<QDBusPendingCallWatcher, QScopedPointerDeleteLater>
-                scopedWatcher(watcher);
-        const QDBusPendingReply<> reply = *scopedWatcher;
+        watcher->deleteLater();
+        const QDBusPendingReply<> reply = *watcher;
         if (reply.isError()) {
             const auto error = reply.error();
             qCCritical(lcPositioningGeoclue2) << "Unable to start the client:"
                                               << error.name() << error.message();
-            setError(AccessError);
             delete m_client;
+            // This can potentially lead to calling ~QGeoPositionInfoSourceGeoclue2(),
+            // so do all the cleanup before.
+            setError(AccessError);
         } else {
             qCDebug(lcPositioningGeoclue2) << "Client successfully started";
 
@@ -332,11 +298,10 @@ void QGeoPositionInfoSourceGeoclue2::stopClient()
 
     const QDBusPendingReply<> reply = m_client->Stop();
     const auto watcher = new QDBusPendingCallWatcher(reply, this);
-    connect(watcher, &QDBusPendingCallWatcher::finished,
+    connect(watcher, &QDBusPendingCallWatcher::finished, this,
             [this](QDBusPendingCallWatcher *watcher) {
-        const QScopedPointer<QDBusPendingCallWatcher, QScopedPointerDeleteLater>
-                scopedWatcher(watcher);
-        const QDBusPendingReply<> reply = *scopedWatcher;
+        watcher->deleteLater();
+        const QDBusPendingReply<> reply = *watcher;
         if (reply.isError()) {
             const auto error = reply.error();
             qCCritical(lcPositioningGeoclue2) << "Unable to stop the client:"
@@ -357,7 +322,7 @@ bool QGeoPositionInfoSourceGeoclue2::configureClient()
     if (m_desktopId.isEmpty()) {
         qCCritical(lcPositioningGeoclue2)
                 << "Unable to configure the client due to the desktop id is not set via"
-                << desktopIdParameter << "plugin parameter or QCoreApplication::applicationName";
+                << desktopIdParameter << "plugin parameter or QGuiApplication::desktopFileName";
         setError(AccessError);
         return false;
     }
@@ -435,7 +400,7 @@ void QGeoPositionInfoSourceGeoclue2::handleNewLocation(const QDBusObjectPath &ol
 
         const auto accuracy = location.accuracy();
         // We assume that an accuracy as 0.0 means that it comes from a sattelite.
-        m_lastPositionFromSatellite = qFuzzyCompare(accuracy, 0.0);
+        m_lastPositionFromSatellite = qFuzzyIsNull(accuracy);
 
         m_lastPosition.setAttribute(QGeoPositionInfo::HorizontalAccuracy, accuracy);
         const auto speed = location.speed();
@@ -457,8 +422,17 @@ void QGeoPositionInfoSourceGeoclue2::parseParameters(const QVariantMap &paramete
     if (parameters.contains(desktopIdParameter))
         m_desktopId = parameters.value(desktopIdParameter).toString();
 
-    if (m_desktopId.isEmpty())
+    if (m_desktopId.isEmpty() && qApp)
+        m_desktopId = qApp->property("desktopFileName").toString();
+
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
+    if (m_desktopId.isEmpty()) {
+        qCWarning(lcPositioningGeoclue2) << "Neither" << desktopIdParameter
+                                         << "plugin parameter nor QGuiApplication::desktopFileName"
+                                         << "has been set. Please consider setting one of the two.";
         m_desktopId = QCoreApplication::applicationName();
+    }
+#endif
 }
 
 QT_END_NAMESPACE

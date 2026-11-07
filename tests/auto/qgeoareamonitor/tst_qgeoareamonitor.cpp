@@ -1,30 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 //TESTED_COMPONENT=src/location
 
@@ -49,6 +24,8 @@
 
 #include "logfilepositionsource.h"
 #include "positionconsumerthread.h"
+
+#include <algorithm>
 
 QT_USE_NAMESPACE
 #define UPDATE_INTERVAL 50
@@ -184,14 +161,14 @@ private slots:
         QVERIFY(obj != nullptr);
         QCOMPARE(obj->sourceName(), QStringLiteral("positionpoll"));
 
-        QList<QGeoAreaMonitorInfo> list = obj->activeMonitors();
-        if (list.count() > 0) {
+        const QList<QGeoAreaMonitorInfo> list = obj->activeMonitors();
+        if (list.size() > 0) {
             //cleanup installed monitors
-            foreach (const QGeoAreaMonitorInfo& info, list) {
+            for (const QGeoAreaMonitorInfo& info : list) {
                 QVERIFY(obj->stopMonitoring(info));
             }
         }
-        QVERIFY(obj->activeMonitors().count() == 0);
+        QVERIFY(obj->activeMonitors().size() == 0);
     }
 
     void cleanupTestCase()
@@ -214,7 +191,7 @@ private slots:
         QVERIFY(obj != nullptr);
         QCOMPARE(obj->sourceName(), QStringLiteral("positionpoll"));
         QVERIFY(!obj->startMonitoring(defaultMonitor));
-        QCOMPARE(obj->activeMonitors().count(), 0);
+        QCOMPARE(obj->activeMonitors().size(), 0);
         QVERIFY(!obj->requestUpdate(defaultMonitor,
                                     SIGNAL(areaEntered(QGeoMonitorInfo,QGeoAreaPositionInfo))));
 
@@ -275,28 +252,28 @@ private slots:
         obj.reset(QGeoAreaMonitorSource::createSource(QStringLiteral("positionpoll"), 0));
         QVERIFY(obj != nullptr);
         QCOMPARE(obj->sourceName(), QStringLiteral("positionpoll"));
-        QCOMPARE(obj->activeMonitors().count(), 0);
+        QCOMPARE(obj->activeMonitors().size(), 0);
         //reference -> should work
         QVERIFY(obj->requestUpdate(copy, SIGNAL(areaEntered(QGeoAreaMonitorInfo,QGeoPositionInfo))));
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
         //replaces areaEntered single shot
         QVERIFY(obj->requestUpdate(copy, SIGNAL(areaExited(QGeoAreaMonitorInfo,QGeoPositionInfo))));
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
         //replaces areaExited single shot
         QVERIFY(obj->startMonitoring(copy));
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
 
 
         //invalid signal
         QVERIFY(!obj->requestUpdate(copy, 0));
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
 
         //signal that doesn't exist
         QVERIFY(!obj->requestUpdate(copy, SIGNAL(areaEntered(QGeoMonitor))));
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
 
         QVERIFY(!obj->requestUpdate(copy, "SIGNAL(areaEntered(QGeoMonitor))"));
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
 
         //ensure that we cannot add a persistent monitor to a source
         //that doesn't support persistence
@@ -305,16 +282,16 @@ private slots:
         persistenceMonitor.setPersistent(!persistenceMonitor.isPersistent());
 
         QVERIFY(!obj->requestUpdate(persistenceMonitor, SIGNAL(areaEntered(QGeoAreaMonitorInfo,QGeoPositionInfo))));
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
         QVERIFY(!obj->startMonitoring(persistenceMonitor));
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
 
         //ensure that persistence was only reason for rejection
         persistenceMonitor.setPersistent(!persistenceMonitor.isPersistent());
         QVERIFY(obj->startMonitoring(persistenceMonitor));
         //persistenceMonitor is copy of already added monitor
         //the last call was an update
-        QCOMPARE(obj->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
     }
 
     void tst_monitor_move_semantics()
@@ -480,32 +457,19 @@ private slots:
         mon3.setArea(r_above);
         QVERIFY(obj->startMonitoring(mon3));
 
-        QList<QGeoAreaMonitorInfo> results = obj->activeMonitors();
-        QCOMPARE(results.count(), 3);
-        foreach (const QGeoAreaMonitorInfo& info, results) {
-            QVERIFY(info == mon || info == mon2 || info == mon3);
-        }
+#define CHECK(o, args, ...) do { \
+            const QList<QGeoAreaMonitorInfo> results = o ->activeMonitors args; \
+            const std::initializer_list<QGeoAreaMonitorInfo> expected = __VA_ARGS__ ; \
+            QCOMPARE(results.size(), int(expected.size())); \
+            QVERIFY(std::is_permutation(results.begin(), results.end(), \
+                                        expected.begin(), expected.end())); \
+        } while (false)
 
-        results = obj->activeMonitors(QGeoShape());
-        QCOMPARE(results.count(), 0);
-
-        results = obj->activeMonitors(QGeoRectangle(QGeoCoordinate(1,1),0.2, 0.2));
-        QCOMPARE(results.count(), 2);
-        foreach (const QGeoAreaMonitorInfo& info, results) {
-            QVERIFY(info == mon || info == mon2);
-        }
-
-        results = obj->activeMonitors(QGeoCircle(QGeoCoordinate(1,1),1000));
-        QCOMPARE(results.count(), 2);
-        foreach (const QGeoAreaMonitorInfo& info, results) {
-            QVERIFY(info == mon || info == mon2);
-        }
-
-        results = obj->activeMonitors(QGeoCircle(QGeoCoordinate(2,1),1000));
-        QCOMPARE(results.count(), 1);
-        foreach (const QGeoAreaMonitorInfo& info, results) {
-            QVERIFY(info == mon3);
-        }
+        CHECK(obj, (), {mon, mon2, mon3});
+        CHECK(obj, (QGeoShape{}), {});
+        CHECK(obj, (QGeoRectangle{QGeoCoordinate{1, 1}, 0.2, 0.2}), {mon, mon2});
+        CHECK(obj, (QGeoCircle{QGeoCoordinate{1, 1}, 1000}), {mon, mon2});
+        CHECK(obj, (QGeoCircle{QGeoCoordinate{2, 1},1000}), {mon3});
 
         //same as above except that we use a different monitor source object instance
         //all monitor objects of same type share same active monitors
@@ -514,32 +478,13 @@ private slots:
         QVERIFY(secondObj != nullptr);
         QCOMPARE(secondObj->sourceName(), QStringLiteral("positionpoll"));
 
-        results = secondObj->activeMonitors();
-        QCOMPARE(results.count(), 3);
-        foreach (const QGeoAreaMonitorInfo& info, results) {
-            QVERIFY(info == mon || info == mon2 || info == mon3);
-        }
+        CHECK(secondObj, (), {mon, mon2, mon3});
+        CHECK(secondObj, (QGeoShape{}), {});
+        CHECK(secondObj, (QGeoRectangle{QGeoCoordinate{1, 1}, 0.2, 0.2}), {mon, mon2});
+        CHECK(secondObj, (QGeoCircle{QGeoCoordinate{1, 1}, 1000}), {mon, mon2});
+        CHECK(secondObj, (QGeoCircle{QGeoCoordinate{2, 1}, 1000}), {mon3});
 
-        results = secondObj->activeMonitors(QGeoShape());
-        QCOMPARE(results.count(), 0);
-
-        results = secondObj->activeMonitors(QGeoRectangle(QGeoCoordinate(1,1),0.2, 0.2));
-        QCOMPARE(results.count(), 2);
-        foreach (const QGeoAreaMonitorInfo& info, results) {
-            QVERIFY(info == mon || info == mon2);
-        }
-
-        results = secondObj->activeMonitors(QGeoCircle(QGeoCoordinate(1,1),1000));
-        QCOMPARE(results.count(), 2);
-        foreach (const QGeoAreaMonitorInfo& info, results) {
-            QVERIFY(info == mon || info == mon2);
-        }
-
-        results = secondObj->activeMonitors(QGeoCircle(QGeoCoordinate(2,1),1000));
-        QCOMPARE(results.count(), 1);
-        foreach (const QGeoAreaMonitorInfo& info, results) {
-            QVERIFY(info == mon3);
-        }
+#undef CHECK
     }
 
     void tst_testExpiryTimeout()
@@ -579,8 +524,8 @@ private slots:
 
 
 
-        QCOMPARE(obj->activeMonitors().count(), monitorCount);
-        QCOMPARE(secondObj->activeMonitors().count(), monitorCount);
+        QCOMPARE(obj->activeMonitors().size(), monitorCount);
+        QCOMPARE(secondObj->activeMonitors().size(), monitorCount);
 
         QGeoAreaMonitorInfo info("InvalidExpiry");
         info.setArea(QGeoRectangle(QGeoCoordinate(10,10), 1, 1 ));
@@ -588,19 +533,19 @@ private slots:
         info.setExpiration(now.addSecs(-1000));
         QVERIFY(info.expiration() < now);
         QVERIFY(!obj->startMonitoring(info));
-        QCOMPARE(obj->activeMonitors().count(), monitorCount);
+        QCOMPARE(obj->activeMonitors().size(), monitorCount);
         QVERIFY(!obj->requestUpdate(info, SIGNAL(areaEntered(QGeoAreaMonitorInfo,QGeoPositionInfo))));
-        QCOMPARE(obj->activeMonitors().count(), monitorCount);
+        QCOMPARE(obj->activeMonitors().size(), monitorCount);
 
         for (int i = 1; i <= monitorCount; i++) {
-            QTRY_VERIFY_WITH_TIMEOUT(expirySpy.count() == 1, 3000); //each expiry within 2 s
+            QTRY_VERIFY_WITH_TIMEOUT(expirySpy.size() == 1, 3000); //each expiry within 2 s
             QGeoAreaMonitorInfo mon = expirySpy.takeFirst().at(0).value<QGeoAreaMonitorInfo>();
-            QCOMPARE(obj->activeMonitors().count(), monitorCount-i);
+            QCOMPARE(obj->activeMonitors().size(), monitorCount-i);
             QCOMPARE(mon.name(), QString::number(i));
         }
 
-        QCOMPARE(expirySpy2.count(), monitorCount);
-        QCOMPARE(secondObj->activeMonitors().count(), 0); //all monitors expired
+        QCOMPARE(expirySpy2.size(), monitorCount);
+        QCOMPARE(secondObj->activeMonitors().size(), 0); //all monitors expired
         for (int i = 1; i <= monitorCount; i++) {
             QGeoAreaMonitorInfo mon = expirySpy2.takeFirst().at(0).value<QGeoAreaMonitorInfo>();
             QCOMPARE(mon.name(), QString::number(i));
@@ -615,8 +560,8 @@ private slots:
         QCOMPARE(obj->sourceName(), QStringLiteral("positionpoll"));
         obj->setObjectName("firstObject");
         QSignalSpy enteredSpy(obj.get(),
-                              SIGNAL(areaEntered(QGeoAreaMonitorInfo, QGeoPositionInfo)));
-        QSignalSpy exitedSpy(obj.get(), SIGNAL(areaExited(QGeoAreaMonitorInfo, QGeoPositionInfo)));
+                              SIGNAL(areaEntered(QGeoAreaMonitorInfo,QGeoPositionInfo)));
+        QSignalSpy exitedSpy(obj.get(), SIGNAL(areaExited(QGeoAreaMonitorInfo,QGeoPositionInfo)));
 
         // using this -> no need for smart pointer
         LogFilePositionSource *source = new LogFilePositionSource(m_fileData, this);
@@ -629,9 +574,9 @@ private slots:
         QVERIFY(secondObj != nullptr);
         QCOMPARE(secondObj->sourceName(), QStringLiteral("positionpoll"));
         QSignalSpy enteredSpy2(secondObj.get(),
-                               SIGNAL(areaEntered(QGeoAreaMonitorInfo, QGeoPositionInfo)));
+                               SIGNAL(areaEntered(QGeoAreaMonitorInfo,QGeoPositionInfo)));
         QSignalSpy exitedSpy2(secondObj.get(),
-                              SIGNAL(areaExited(QGeoAreaMonitorInfo, QGeoPositionInfo)));
+                              SIGNAL(areaExited(QGeoAreaMonitorInfo,QGeoPositionInfo)));
         secondObj->setObjectName("secondObject");
 
         QGeoAreaMonitorInfo infoRectangle("Rectangle");
@@ -656,16 +601,16 @@ private slots:
         QVERIFY(obj->requestUpdate(singleShot_exit,
                                    SIGNAL(areaExited(QGeoAreaMonitorInfo,QGeoPositionInfo))));
 
-        QVERIFY(obj->activeMonitors().count() == 4); //all monitors active
-        QVERIFY(secondObj->activeMonitors().count() == 4); //all monitors active
+        QVERIFY(obj->activeMonitors().size() == 4); //all monitors active
+        QVERIFY(secondObj->activeMonitors().size() == 4); //all monitors active
 
         static const int Number_Of_Entered_Events = 6;
         static const int Number_Of_Exited_Events = 5;
         //takes 87 (lines)*50(timeout)/1000 seconds to finish
-        QTRY_VERIFY_WITH_TIMEOUT(enteredSpy.count() == Number_Of_Entered_Events, 5000);
-        QTRY_VERIFY_WITH_TIMEOUT(exitedSpy.count() == Number_Of_Exited_Events, 5000);
-        QCOMPARE(enteredSpy.count(), Number_Of_Entered_Events);
-        QCOMPARE(exitedSpy.count(), Number_Of_Exited_Events);
+        QTRY_VERIFY_WITH_TIMEOUT(enteredSpy.size() == Number_Of_Entered_Events, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(exitedSpy.size() == Number_Of_Exited_Events, 5000);
+        QCOMPARE(enteredSpy.size(), Number_Of_Entered_Events);
+        QCOMPARE(exitedSpy.size(), Number_Of_Exited_Events);
 
         QList<QGeoAreaMonitorInfo> monitorsInExpectedEnteredEventOrder;
         monitorsInExpectedEnteredEventOrder << infoRectangle << singleShot_enter << singleShot_exit
@@ -682,8 +627,8 @@ private slots:
                                     << QGeoCoordinate(-27.62, 153.091036) //infoCircle
                                     << QGeoCoordinate(-27.78, 153.093647) //infoCircle
                                     << QGeoCoordinate(-27.75, 153.093896);//infoRectangle
-        QCOMPARE(enteredEventCoordinateOrder.count(), Number_Of_Entered_Events);
-        QCOMPARE(monitorsInExpectedEnteredEventOrder.count(), Number_Of_Entered_Events);
+        QCOMPARE(enteredEventCoordinateOrder.size(), Number_Of_Entered_Events);
+        QCOMPARE(monitorsInExpectedEnteredEventOrder.size(), Number_Of_Entered_Events);
 
         QList<QGeoCoordinate> exitedEventCoordinateOrder;
         exitedEventCoordinateOrder  << QGeoCoordinate(-27.78, 153.092218) //infoRectangle
@@ -691,8 +636,8 @@ private slots:
                                     << QGeoCoordinate(-27.81, 153.092530) //singleshot_exit
                                     << QGeoCoordinate(-27.61, 153.095231) //infoCircle
                                     << QGeoCoordinate(-27.54, 153.095995);//infoCircle
-        QCOMPARE(exitedEventCoordinateOrder.count(), Number_Of_Exited_Events);
-        QCOMPARE(monitorsInExpectedExitedEventOrder.count(), Number_Of_Exited_Events);
+        QCOMPARE(exitedEventCoordinateOrder.size(), Number_Of_Exited_Events);
+        QCOMPARE(monitorsInExpectedExitedEventOrder.size(), Number_Of_Exited_Events);
 
         //verify that both sources got the same signals
         for (int i = 0; i < Number_Of_Entered_Events; i++) {
@@ -739,8 +684,8 @@ private slots:
                      qPrintable(QString::number(i) + ". posInfo"));
         }
 
-        QCOMPARE(obj->activeMonitors().count(), 2); //single shot monitors have been removed
-        QCOMPARE(secondObj->activeMonitors().count(), 2);
+        QCOMPARE(obj->activeMonitors().size(), 2); //single shot monitors have been removed
+        QCOMPARE(secondObj->activeMonitors().size(), 2);
     }
 
     void tst_swapOfPositionSource()
@@ -751,8 +696,8 @@ private slots:
         QCOMPARE(obj->sourceName(), QStringLiteral("positionpoll"));
         obj->setObjectName("firstObject");
         QSignalSpy enteredSpy(obj.get(),
-                              SIGNAL(areaEntered(QGeoAreaMonitorInfo, QGeoPositionInfo)));
-        QSignalSpy exitedSpy(obj.get(), SIGNAL(areaExited(QGeoAreaMonitorInfo, QGeoPositionInfo)));
+                              SIGNAL(areaEntered(QGeoAreaMonitorInfo,QGeoPositionInfo)));
+        QSignalSpy exitedSpy(obj.get(), SIGNAL(areaExited(QGeoAreaMonitorInfo,QGeoPositionInfo)));
 
         std::unique_ptr<QGeoAreaMonitorSource> obj2(
                 QGeoAreaMonitorSource::createSource(QStringLiteral("positionpoll"), 0));
@@ -760,9 +705,9 @@ private slots:
         QCOMPARE(obj2->sourceName(), QStringLiteral("positionpoll"));
         obj2->setObjectName("secondObject");
         QSignalSpy enteredSpy2(obj2.get(),
-                               SIGNAL(areaEntered(QGeoAreaMonitorInfo, QGeoPositionInfo)));
+                               SIGNAL(areaEntered(QGeoAreaMonitorInfo,QGeoPositionInfo)));
         QSignalSpy exitedSpy2(obj2.get(),
-                              SIGNAL(areaExited(QGeoAreaMonitorInfo, QGeoPositionInfo)));
+                              SIGNAL(areaExited(QGeoAreaMonitorInfo,QGeoPositionInfo)));
 
         // using this -> no need for smart pointer
         LogFilePositionSource *source = new LogFilePositionSource(m_fileData, this);
@@ -783,17 +728,17 @@ private slots:
         QVERIFY(infoRectangle.isValid());
         QVERIFY(obj->startMonitoring(infoRectangle));
 
-        QCOMPARE(obj->activeMonitors().count(), 1);
-        QCOMPARE(obj2->activeMonitors().count(), 1);
+        QCOMPARE(obj->activeMonitors().size(), 1);
+        QCOMPARE(obj2->activeMonitors().size(), 1);
 
         QGeoCoordinate firstBorder(-27.6, 153.090908);
         QGeoCoordinate secondBorder(-27.81, 153.092530);
 
         /***********************************/
         //1. trigger events on source (until areaExit
-        QTRY_VERIFY_WITH_TIMEOUT(exitedSpy.count() == 1, 5000);
-        QCOMPARE(enteredSpy.count(), enteredSpy2.count());
-        QCOMPARE(exitedSpy.count(), exitedSpy2.count());
+        QTRY_VERIFY_WITH_TIMEOUT(exitedSpy.size() == 1, 5000);
+        QCOMPARE(enteredSpy.size(), enteredSpy2.size());
+        QCOMPARE(exitedSpy.size(), exitedSpy2.size());
 
         //compare entered event
         QVERIFY(enteredSpy.first().at(0).value<QGeoAreaMonitorInfo>() ==
@@ -808,10 +753,10 @@ private slots:
         QVERIFY(info == exitedSpy2.takeFirst().at(1).value<QGeoPositionInfo>());
         QVERIFY(info.coordinate() == secondBorder);
 
-        QCOMPARE(exitedSpy.count(), 0);
-        QCOMPARE(enteredSpy.count(), 0);
-        QCOMPARE(exitedSpy2.count(), 0);
-        QCOMPARE(enteredSpy2.count(), 0);
+        QCOMPARE(exitedSpy.size(), 0);
+        QCOMPARE(enteredSpy.size(), 0);
+        QCOMPARE(exitedSpy2.size(), 0);
+        QCOMPARE(enteredSpy2.size(), 0);
 
         /***********************************/
         //2. change position source -> which restarts at beginning again
@@ -819,9 +764,9 @@ private slots:
         QCOMPARE(obj->positionInfoSource(), obj2->positionInfoSource());
         QCOMPARE(obj2->positionInfoSource(), source2);
 
-        QTRY_VERIFY_WITH_TIMEOUT(exitedSpy.count() == 1, 5000);
-        QCOMPARE(enteredSpy.count(), enteredSpy2.count());
-        QCOMPARE(exitedSpy.count(), exitedSpy2.count());
+        QTRY_VERIFY_WITH_TIMEOUT(exitedSpy.size() == 1, 5000);
+        QCOMPARE(enteredSpy.size(), enteredSpy2.size());
+        QCOMPARE(exitedSpy.size(), exitedSpy2.size());
 
         //compare entered event
         QVERIFY(enteredSpy.first().at(0).value<QGeoAreaMonitorInfo>() ==
@@ -852,7 +797,7 @@ private slots:
         info.setPersistent(true);
         info.setName("RectangleAreaMonitor");
         QTest::newRow("Rectangle Test") << info  << 45
-                << QString("QGeoAreaMonitorInfo(\"RectangleAreaMonitor\", QGeoShape(Rectangle), "
+                << QString("QGeoAreaMonitorInfo(\"RectangleAreaMonitor\", QGeoShape(Rectangle, (), ()), "
                               "persistent: true, expiry: QDateTime(Invalid)) 45");
 
         info = QGeoAreaMonitorInfo();
@@ -863,7 +808,7 @@ private slots:
         map.insert(QString("foobarKey"), QVariant(45)); //should be ignored
         info.setNotificationParameters(map);
         QTest::newRow("Circle Test") << info  << 45
-                << QString("QGeoAreaMonitorInfo(\"CircleAreaMonitor\", QGeoShape(Circle), "
+                << QString("QGeoAreaMonitorInfo(\"CircleAreaMonitor\", QGeoShape(Circle, center=(), radius=-1), "
                               "persistent: false, expiry: QDateTime(Invalid)) 45");
 
         // we ignore any further QDateTime related changes to avoid depending on QDateTime related
@@ -884,9 +829,6 @@ private slots:
 
     void multipleThreads()
     {
-#if defined(Q_OS_MACOS) && defined(Q_PROCESSOR_ARM)
-        QSKIP("This test randomly hangs on macOS ARM (QTBUG-110931)");
-#endif
         std::unique_ptr<QGeoAreaMonitorSource> obj(
                 QGeoAreaMonitorSource::createSource(QStringLiteral("positionpoll"), 0));
         QVERIFY(obj != nullptr);
@@ -927,16 +869,16 @@ private slots:
         singleShot_enter.setArea(QGeoRectangle(QGeoCoordinate(-27.67, 153.093), 0.2, 0.2));
         QVERIFY(singleShot_enter.isValid());
         QVERIFY(obj->requestUpdate(singleShot_enter,
-                                   SIGNAL(areaEntered(QGeoAreaMonitorInfo, QGeoPositionInfo))));
+                                   SIGNAL(areaEntered(QGeoAreaMonitorInfo,QGeoPositionInfo))));
 
         QGeoAreaMonitorInfo singleShot_exit("SingleShot_on_Exited");
         singleShot_exit.setArea(QGeoRectangle(QGeoCoordinate(-27.70, 153.093), 0.2, 0.2));
         QVERIFY(singleShot_exit.isValid());
         QVERIFY(obj->requestUpdate(singleShot_exit,
-                                   SIGNAL(areaExited(QGeoAreaMonitorInfo, QGeoPositionInfo))));
+                                   SIGNAL(areaExited(QGeoAreaMonitorInfo,QGeoPositionInfo))));
 
         // wait until we read all data
-        QTRY_COMPARE_WITH_TIMEOUT(noDataSpy.count(), 1, 5000);
+        QTRY_COMPARE_WITH_TIMEOUT(noDataSpy.size(), 1, 5000);
 
         // first request all the threads to terminate
         for (int i = 0; i < threadCount; ++i)
@@ -954,8 +896,10 @@ private slots:
         // Verify that the source started and stopped updates only once.
         // This is needed to check that the connection tracking logic in
         // connectNotify()/disconnectNotify() is working properly.
-        QCOMPARE(updatesStartedSpy.count(), 1);
-        QCOMPARE(updatesStoppedSpy.count(), 1);
+        QCOMPARE(updatesStartedSpy.size(), 1);
+        // We use QTRY_COMPARE here, because stopUpdates() is now invoked via
+        // Qt::QueuedConnection in the positionpoll backend.
+        QTRY_COMPARE(updatesStoppedSpy.size(), 1);
     }
 
     void backendProperties()
@@ -972,6 +916,26 @@ private slots:
 
         QCOMPARE(obj->backendProperty(DummyMonitorSource::kTestProperty), 10);
         QCOMPARE(obj->backendProperty(invalidProperty), QVariant());
+    }
+
+    void randomSignalName()
+    {
+        auto src = std::unique_ptr<QGeoAreaMonitorSource>(
+                QGeoAreaMonitorSource::createSource(QStringLiteral("positionpoll"), nullptr));
+        QVERIFY(src);
+
+        QGeoAreaMonitorInfo infoCircle("Circle");
+        infoCircle.setArea(QGeoCircle(QGeoCoordinate(-27.70, 153.093), 10000));
+        QVERIFY(infoCircle.isValid());
+
+        // empty signal -> invalid
+        QVERIFY(!src->requestUpdate(infoCircle, ""));
+
+        // non-existent single-char signal -> invalid
+        QVERIFY(!src->requestUpdate(infoCircle, "a"));
+
+        // non-existent multi-char signal -> invalid
+        QVERIFY(!src->requestUpdate(infoCircle, "abcd"));
     }
 };
 

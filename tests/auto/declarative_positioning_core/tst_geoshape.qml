@@ -1,35 +1,10 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 import QtQuick 2.0
 import QtTest 1.0
 import QtPositioning 5.2
-import TestFactory 1.0
+import PositioningTest.Core 1.0
 
 Item {
     id: testCase
@@ -236,6 +211,49 @@ Item {
             verify(polygon.isValid)
             verify(polygon !== QtPositioning.shapeToPolygon(QtPositioning.polygon(trace1)))
             compare(polygon, QtPositioning.shapeToPolygon(QtPositioning.polygon(trace2)))
+        }
+    }
+
+    TestCase {
+        name: "Properties"
+        Properties {
+            id: properties
+            coordinate: QtPositioning.coordinate(12.5, 23.6)
+            coordinates: [
+                { latitude: 1.1, longitude: 2.2 },
+                { latitude: 3.3, longitude: 4.4, altitude: 5.5 }
+            ]
+            rectangle: box
+            region: [
+                {
+                    topLeft: { latitude: 3.3, longitude: 2.2 },
+                    bottomRight: { latitude: 1.1, longitude: 4.4 }
+                },
+                {
+                    bottomLeft: { latitude: 1.1, longitude: 2.2 },
+                    topRight: { latitude: 3.3, longitude: 4.4 }
+                },
+                {
+                    center: { latitude: 5.5, longitude: 6.6 },
+                    width: 0.5,
+                    height: 0.1
+                }
+            ]
+        }
+
+        function test_initialization() {
+            compare(properties.coordinate, QtPositioning.coordinate(12.5, 23.6))
+            compare(properties.coordinates.length, 2)
+            compare(properties.coordinates[0], QtPositioning.coordinate(1.1, 2.2))
+            compare(properties.coordinates[1], QtPositioning.coordinate(3.3, 4.4, 5.5))
+
+            compare(properties.rectangle, box)
+            compare(properties.region.length, 3)
+            var r = QtPositioning.rectangle(QtPositioning.coordinate(3.3, 2.2),
+                                            QtPositioning.coordinate(1.1, 4.4))
+            compare(properties.region[0], r)
+            compare(properties.region[1], r)
+            compare(properties.region[2], QtPositioning.rectangle(QtPositioning.coordinate(5.5, 6.6), 0.5, 0.1))
         }
     }
 

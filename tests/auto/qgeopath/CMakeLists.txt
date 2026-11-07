@@ -1,3 +1,6 @@
+# Copyright (C) 2022 The Qt Company Ltd.
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Generated from qgeopath.pro.
 
 #####################################################################
@@ -7,9 +10,9 @@
 qt_internal_add_test(tst_qgeopath
     SOURCES
         tst_qgeopath.cpp
-    PUBLIC_LIBRARIES
+    LIBRARIES
         Qt::Core
-        Qt::Positioning
+        Qt::PositioningPrivate
 )
 
 #### Keys ignored in scope 1:.:.:qgeopath.pro:<TRUE>:

@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 #include "qgeocoordinate.h"
 #include "qgeocoordinate_p.h"
 #include "qlocationutils_p.h"
@@ -50,6 +15,7 @@
 
 QT_BEGIN_NAMESPACE
 
+QT_IMPL_METATYPE_EXTERN(QGeoCoordinate)
 
 static const double qgeocoordinate_EARTH_MEAN_RADIUS = 6371.0072;
 
@@ -108,8 +74,7 @@ QGeoMercatorCoordinatePrivate::~QGeoMercatorCoordinatePrivate()
 
     Azimuth in this context is equivalent to a compass bearing based on true north.
 
-    This class is a \l Q_GADGET since Qt 5.5. It can be
-    \l{Cpp_value_integration_positioning}{directly used from C++ and QML}.
+    This class is also accessible in QML as \l[QML]{geoCoordinate}.
 */
 
 /*!
@@ -312,6 +277,12 @@ QT_DEFINE_QSDP_SPECIALIZATION_DTOR(QGeoCoordinatePrivate)
     Returns \c true if latitude, longitude, or altitude of the \a lhs
     coordinate are not identical to those of the \a rhs coordinate. Otherwise
     returns \c false.
+*/
+
+/*!
+    \fn void QGeoCoordinate::swap(QGeoCoordinate &other)
+    \since 6.2
+    \memberswap{coordinate}
 */
 
 /*!
@@ -569,13 +540,12 @@ QString QGeoCoordinate::toString(CoordinateFormat format) const
 
     double absLat = qAbs(d->lat);
     double absLng = qAbs(d->lng);
-    QChar symbol(0x00B0);   // degrees symbol
 
     switch (format) {
         case Degrees:
         case DegreesWithHemisphere: {
-            latStr = QString::number(absLat, 'f', 5) + symbol;
-            longStr = QString::number(absLng, 'f', 5) + symbol;
+            latStr = QString::asprintf("%.5f°", absLat);
+            longStr = QString::asprintf("%.5f°", absLng);
             break;
         }
         case DegreesMinutes:
@@ -597,14 +567,8 @@ QString QGeoCoordinate::toString(CoordinateFormat format) const
                 lngMin = 0.0f;
             }
 
-            latStr = QString::fromLatin1("%1%2 %3'")
-                     .arg(QString::number(int(absLat)))
-                     .arg(symbol)
-                     .arg(QString::number(latMin, 'f', 3));
-            longStr = QString::fromLatin1("%1%2 %3'")
-                      .arg(QString::number(int(absLng)))
-                      .arg(symbol)
-                      .arg(QString::number(lngMin, 'f', 3));
+            latStr = QString::asprintf("%d° %.3f'", int(absLat), latMin);
+            longStr = QString::asprintf("%d° %.3f'", int(absLng), lngMin);
             break;
         }
         case DegreesMinutesSeconds:
@@ -639,16 +603,8 @@ QString QGeoCoordinate::toString(CoordinateFormat format) const
                 }
             }
 
-            latStr = QString::fromLatin1("%1%2 %3' %4\"")
-                     .arg(QString::number(int(absLat)))
-                     .arg(symbol)
-                     .arg(QString::number(int(latMin)))
-                     .arg(QString::number(latSec, 'f', 1));
-            longStr = QString::fromLatin1("%1%2 %3' %4\"")
-                      .arg(QString::number(int(absLng)))
-                      .arg(symbol)
-                      .arg(QString::number(int(lngMin)))
-                      .arg(QString::number(lngSec, 'f', 1));
+            latStr = QString::asprintf("%d° %d' %.1f\"", int(absLat), int(latMin), latSec);
+            longStr = QString::asprintf("%d° %d' %.1f\"", int(absLng), int(lngMin), lngSec);
             break;
         }
     }
@@ -687,11 +643,11 @@ QString QGeoCoordinate::toString(CoordinateFormat format) const
 bool QGeoCoordinate::equals(const QGeoCoordinate &lhs, const QGeoCoordinate &rhs)
 {
     bool latEqual = (qIsNaN(lhs.d->lat) && qIsNaN(rhs.d->lat))
-                        || qFuzzyCompare(lhs.d->lat, rhs.d->lat);
+                        || QtPrivate::fuzzyCompare(lhs.d->lat, rhs.d->lat);
     bool lngEqual = (qIsNaN(lhs.d->lng) && qIsNaN(rhs.d->lng))
-                        || qFuzzyCompare(lhs.d->lng, rhs.d->lng);
+                        || QtPrivate::fuzzyCompare(lhs.d->lng, rhs.d->lng);
     bool altEqual = (qIsNaN(lhs.d->alt) && qIsNaN(rhs.d->alt))
-                        || qFuzzyCompare(lhs.d->alt, rhs.d->alt);
+                        || QtPrivate::fuzzyCompare(lhs.d->alt, rhs.d->alt);
 
     if (!qIsNaN(lhs.d->lat) && ((lhs.d->lat == 90.0) || (lhs.d->lat == -90.0)))
         lngEqual = true;
@@ -780,7 +736,7 @@ QDataStream &QGeoCoordinate::dataStreamIn(QDataStream &stream, QGeoCoordinate &c
 */
 size_t qHash(const QGeoCoordinate &coordinate, size_t seed)
 {
-    QtPrivate::QHashCombine hash;
+    QtPrivate::QHashCombine hash(seed);
     // north and south pole are geographically equivalent (no matter the longitude)
     if (coordinate.latitude() != 90.0 && coordinate.latitude() != -90.0)
         seed = hash(seed, coordinate.longitude());

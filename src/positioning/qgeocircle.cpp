@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "qgeocircle.h"
 #include "qgeocircle_p.h"
@@ -48,6 +13,8 @@
 #include "qdoublevector3d_p.h"
 #include <cmath>
 QT_BEGIN_NAMESPACE
+
+QT_IMPL_METATYPE_EXTERN(QGeoCircle)
 
 /*!
     \class QGeoCircle
@@ -64,8 +31,7 @@ QT_BEGIN_NAMESPACE
     The circle is considered invalid if the center coordinate is invalid
     or if the radius is less than zero.
 
-    This class is a \l Q_GADGET since Qt 5.5.  It can be
-    \l{Cpp_value_integration_positioning}{directly used from C++ and QML}.
+    This class is also accessible in QML as \l[QML]{geoCircle}.
 */
 
 /*!
@@ -108,24 +74,12 @@ inline const QGeoCirclePrivate *QGeoCircle::d_func() const
     return static_cast<const QGeoCirclePrivate *>(d_ptr.constData());
 }
 
-struct CircleVariantConversions
-{
-    CircleVariantConversions()
-    {
-        QMetaType::registerConverter<QGeoShape, QGeoCircle>();
-        QMetaType::registerConverter<QGeoCircle, QGeoShape>();
-    }
-};
-
-Q_GLOBAL_STATIC(CircleVariantConversions, initCircleConversions)
-
 /*!
     Constructs a new, invalid geo circle.
 */
 QGeoCircle::QGeoCircle()
 :   QGeoShape(new QGeoCirclePrivate)
 {
-    initCircleConversions();
 }
 
 /*!
@@ -133,7 +87,6 @@ QGeoCircle::QGeoCircle()
 */
 QGeoCircle::QGeoCircle(const QGeoCoordinate &center, qreal radius)
 {
-    initCircleConversions();
     d_ptr = new QGeoCirclePrivate(center, radius);
 }
 
@@ -143,7 +96,6 @@ QGeoCircle::QGeoCircle(const QGeoCoordinate &center, qreal radius)
 QGeoCircle::QGeoCircle(const QGeoCircle &other)
 :   QGeoShape(other)
 {
-    initCircleConversions();
 }
 
 /*!
@@ -152,7 +104,6 @@ QGeoCircle::QGeoCircle(const QGeoCircle &other)
 QGeoCircle::QGeoCircle(const QGeoShape &other)
 :   QGeoShape(other)
 {
-    initCircleConversions();
     if (type() != QGeoShape::CircleType)
         d_ptr = new QGeoCirclePrivate;
 }
@@ -170,7 +121,11 @@ QGeoCircle &QGeoCircle::operator=(const QGeoCircle &other)
     QGeoShape::operator=(other);
     return *this;
 }
-
+/*!
+ * \class QGeoCirclePrivate
+ * \inmodule QtPositioning
+ * \internal
+ */
 bool QGeoCirclePrivate::isValid() const
 {
     return m_center.isValid() && !qIsNaN(m_radius) && m_radius >= -1e-7;
@@ -228,7 +183,7 @@ bool QGeoCirclePrivate::contains(const QGeoCoordinate &coordinate) const
 
     // see QTBUG-41447 for details
     qreal distance = m_center.distanceTo(coordinate);
-    if (qFuzzyCompare(distance, m_radius) || distance <= m_radius)
+    if (distance <= m_radius || QtPrivate::fuzzyCompare(distance, m_radius))
         return true;
 
     return false;

@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "qdeclarativepositionsource_p.h"
 #include "qdeclarativeposition_p.h"
@@ -52,7 +17,7 @@ QT_BEGIN_NAMESPACE
 
 /*!
     \qmltype PositionSource
-    //! \instantiates QDeclarativePositionSource
+    //! \nativetype QDeclarativePositionSource
     \inqmlmodule QtPositioning
     \since 5.2
 
@@ -104,10 +69,6 @@ QT_BEGIN_NAMESPACE
         }
     }
     \endcode
-
-    The \l{geoflickr}{GeoFlickr} example application shows how to use
-    a PositionSource in your application to retrieve local data for users
-    from a REST web service.
 
     \section2 Controlling Operation State
 
@@ -187,6 +148,8 @@ QT_BEGIN_NAMESPACE
 */
 
 QDeclarativePositionSource::QDeclarativePositionSource()
+    : m_singleUpdate(0), m_regularUpdates(0), m_componentComplete(0),
+      m_parametersInitialized(0), m_startRequested(0), m_defaultSourceUsed(0)
 {
     m_position.setValueBypassingBindings(new QDeclarativePosition(this));
 }
@@ -227,7 +190,7 @@ void QDeclarativePositionSource::setName(const QString &newName)
     if (newName.isEmpty() && m_defaultSourceUsed)
         return; // previously attached to a default source, now requesting the same.
 
-    const QString previousName = name();
+    const QString previousName = m_sourceName.valueBypassingBindings();
 
     if (!m_componentComplete || !m_parametersInitialized) {
         if (previousName != newName) {
@@ -361,34 +324,13 @@ bool QDeclarativePositionSource::isValidActualComputation() const
     return m_positionSource != nullptr;
 }
 
-void QDeclarativePositionSource::handleUpdateTimeout()
-{
-    // notify will be called by the calling method
-    m_sourceError.setValueBypassingBindings(QDeclarativePositionSource::UpdateTimeoutError);
-
-    if (!m_active)
-        return;
-
-    if (m_singleUpdate) {
-        m_singleUpdate = false;
-
-        if (!m_regularUpdates) {
-            // only singleUpdate based timeouts change activity
-            // continuous updates may resume again
-            // (see QGeoPositionInfoSource::startUpdates())
-            m_active.setValueBypassingBindings(false);
-            m_active.notify();
-        }
-    }
-}
-
 /*!
     \internal
 */
 void QDeclarativePositionSource::onParameterInitialized()
 {
     m_parametersInitialized = true;
-    for (QDeclarativePluginParameter *p: qAsConst(m_parameters)) {
+    for (QDeclarativePluginParameter *p: std::as_const(m_parameters)) {
         if (!p->isInitialized()) {
             m_parametersInitialized = false;
             break;
@@ -429,7 +371,7 @@ void QDeclarativePositionSource::setSource(QGeoPositionInfoSource *source)
 
 bool QDeclarativePositionSource::parametersReady()
 {
-    for (const QDeclarativePluginParameter *p: qAsConst(m_parameters)) {
+    for (const QDeclarativePluginParameter *p: std::as_const(m_parameters)) {
         if (!p->isInitialized())
             return false;
     }
@@ -494,13 +436,14 @@ int QDeclarativePositionSource::updateInterval() const
     This property holds the supported positioning methods of the
     current source.
 
-    \list
-    \li PositionSource.NoPositioningMethods - No positioning methods supported (no source).
-    \li PositionSource.SatellitePositioningMethods - Satellite-based positioning methods such as GPS are supported.
-    \li PositionSource.NonSatellitePositioningMethods - Non-satellite-based methods are supported.
-    \li PositionSource.AllPositioningMethods - Both satellite-based and non-satellite positioning methods are supported.
-    \endlist
-
+    \value PositionSource.NoPositioningMethods
+        No positioning methods supported (no source).
+    \value PositionSource.SatellitePositioningMethods
+        Satellite-based positioning methods such as GPS are supported.
+    \value PositionSource.NonSatellitePositioningMethods
+        Non-satellite-based methods are supported.
+    \value PositionSource.AllPositioningMethods
+        Both satellite-based and non-satellite positioning methods are supported.
 */
 
 QDeclarativePositionSource::PositioningMethods
@@ -531,13 +474,14 @@ QDeclarativePositionSource::bindableSupportedPositioningMethods() const
     This property holds the preferred positioning methods of the
     current source.
 
-    \list
-    \li PositionSource.NoPositioningMethods - No positioning method is preferred.
-    \li PositionSource.SatellitePositioningMethods - Satellite-based positioning methods such as GPS should be preferred.
-    \li PositionSource.NonSatellitePositioningMethods - Non-satellite-based methods should be preferred.
-    \li PositionSource.AllPositioningMethods - Any positioning methods are acceptable.
-    \endlist
-
+    \value PositionSource.NoPositioningMethods
+        No positioning method is preferred.
+    \value PositionSource.SatellitePositioningMethods
+        Satellite-based positioning methods such as GPS should be preferred.
+    \value PositionSource.NonSatellitePositioningMethods
+        Non-satellite-based methods should be preferred.
+    \value PositionSource.AllPositioningMethods
+        Any positioning methods are acceptable.
 */
 
 void QDeclarativePositionSource::setPreferredPositioningMethods(PositioningMethods methods)
@@ -571,7 +515,7 @@ QDeclarativePositionSource::PositioningMethods QDeclarativePositionSource::prefe
 }
 
 /*!
-    \qmlmethod PositionSource::start()
+    \qmlmethod void PositionSource::start()
 
     Requests updates from the location source.
     Uses \l updateInterval if set, default interval otherwise.
@@ -580,7 +524,7 @@ QDeclarativePositionSource::PositioningMethods QDeclarativePositionSource::prefe
     \note Calling this method breaks the bindings of
     \l {PositionSource::}{active} property.
 
-    \sa stop, update, active
+    \sa stop(), update(), active
 */
 
 void QDeclarativePositionSource::start()
@@ -592,7 +536,7 @@ void QDeclarativePositionSource::start()
 }
 
 /*!
-    \qmlmethod PositionSource::update(int timeout)
+    \qmlmethod void PositionSource::update(int timeout)
 
     A convenience method to request single update from the location source.
     If there is no source available, this method has no effect.
@@ -605,7 +549,7 @@ void QDeclarativePositionSource::start()
     (the default value), it defaults to a reasonable timeout period as
     appropriate for the source.
 
-    \sa start, stop, active
+    \sa start(), stop(), active
 */
 
 void QDeclarativePositionSource::update(int timeout)
@@ -627,7 +571,7 @@ void QDeclarativePositionSource::update(int timeout)
 }
 
 /*!
-    \qmlmethod PositionSource::stop()
+    \qmlmethod void PositionSource::stop()
 
     Stops updates from the location source.
     If there is no source available or it is not active,
@@ -636,7 +580,7 @@ void QDeclarativePositionSource::update(int timeout)
     \note Calling this method breaks the bindings of
     \l {PositionSource::}{active} property.
 
-    \sa start, update, active
+    \sa start(), update(), active
 */
 
 void QDeclarativePositionSource::stop()
@@ -733,19 +677,19 @@ void QDeclarativePositionSource::positionUpdateReceived(const QGeoPositionInfo &
 
     This property holds the error which last occurred with the PositionSource.
 
-    \list
-    \li PositionSource.AccessError - The connection setup to the remote positioning backend failed because the
+    \value PositionSource.AccessError
+        The connection setup to the remote positioning backend failed because the
         application lacked the required privileges.
-    \li PositionSource.ClosedError - The positioning backend closed the connection, which happens for example in case
+    \value PositionSource.ClosedError
+        The positioning backend closed the connection, which happens for example in case
         the user is switching location services to off. As soon as the location service is re-enabled
         regular updates will resume.
-    \li PositionSource.NoError - No error has occurred.
-    \li PositionSource.UnknownSourceError - An unidentified error occurred.
-    \li PositionSource.UpdateTimeoutError - The current position could not be
+    \value PositionSource.NoError No error has occurred.
+    \value PositionSource.UnknownSourceError An unidentified error occurred.
+    \value PositionSource.UpdateTimeoutError
+        The current position could not be
         retrieved within the specified timeout, or this PositionSource determined
         that it will not be able to provide further regular updates.
-    \endlist
-
 */
 
 QDeclarativePositionSource::SourceError QDeclarativePositionSource::sourceError() const
@@ -796,7 +740,7 @@ void QDeclarativePositionSource::parameter_append(QQmlListProperty<QDeclarativeP
 */
 qsizetype QDeclarativePositionSource::parameter_count(QQmlListProperty<QDeclarativePluginParameter> *prop)
 {
-    return static_cast<QDeclarativePositionSource *>(prop->object)->m_parameters.count();
+    return static_cast<QDeclarativePositionSource *>(prop->object)->m_parameters.size();
 }
 
 /*!
@@ -839,11 +783,12 @@ void QDeclarativePositionSource::componentComplete()
 {
     m_componentComplete = true;
     m_parametersInitialized = true;
-    for (QDeclarativePluginParameter *p: qAsConst(m_parameters)) {
+    for (QDeclarativePluginParameter *p: std::as_const(m_parameters)) {
         if (!p->isInitialized()) {
             m_parametersInitialized = false;
             connect(p, &QDeclarativePluginParameter::initialized,
-                    this, &QDeclarativePositionSource::onParameterInitialized);
+                    this, &QDeclarativePositionSource::onParameterInitialized,
+                    Qt::SingleShotConnection);
         }
     }
 
@@ -852,7 +797,7 @@ void QDeclarativePositionSource::componentComplete()
 }
 
 /*!
-     \qmlmethod bool PositionSource::setBackendProperty(string name, Variant value)
+     \qmlmethod bool PositionSource::setBackendProperty(string name, var value)
 
     Sets the backend-specific property named \a name to \a value.
     Returns true on success, false otherwise, including if called on an uninitialized PositionSource.
@@ -871,7 +816,7 @@ bool QDeclarativePositionSource::setBackendProperty(const QString &name, const Q
 }
 
 /*!
-     \qmlmethod Variant PositionSource::backendProperty(string name)
+    \qmlmethod var PositionSource::backendProperty(string name)
 
     Returns the value of the backend-specific property named \a name, if present.
     Otherwise, including if called on an uninitialized PositionSource, the return value will be invalid.
@@ -880,7 +825,7 @@ bool QDeclarativePositionSource::setBackendProperty(const QString &name, const Q
 
     \since Qt Positioning 5.14
 
-    \sa backendProperty, QGeoPositionInfoSource::setBackendProperty
+    \sa setBackendProperty, QGeoPositionInfoSource::setBackendProperty
 */
 QVariant QDeclarativePositionSource::backendProperty(const QString &name) const
 {
@@ -904,7 +849,7 @@ void QDeclarativePositionSource::sourceErrorReceived(const QGeoPositionInfoSourc
     else if (error == QGeoPositionInfoSource::ClosedError)
         m_sourceError.setValueBypassingBindings(QDeclarativePositionSource::ClosedError);
     else if (error == QGeoPositionInfoSource::UpdateTimeoutError)
-        handleUpdateTimeout(); // also sets m_sourceError
+        m_sourceError.setValueBypassingBindings(QDeclarativePositionSource::UpdateTimeoutError);
     else if (error == QGeoPositionInfoSource::NoError)
         return; //nothing to do
     else
@@ -912,6 +857,16 @@ void QDeclarativePositionSource::sourceErrorReceived(const QGeoPositionInfoSourc
 
     m_sourceError.notify();
     emit sourceErrorChanged();
+
+    // if an error occurred during single update, the update is stopped, so we
+    // need to change the active state.
+    if (m_active && m_singleUpdate) {
+        m_singleUpdate = false;
+        if (!m_regularUpdates) {
+            m_active.setValueBypassingBindings(false);
+            m_active.notify();
+        }
+    }
 }
 
 QT_END_NAMESPACE

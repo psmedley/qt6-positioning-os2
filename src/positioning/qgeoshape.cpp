@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "qgeoshape.h"
 #include "qgeoshape_p.h"
@@ -54,6 +19,8 @@
 #endif
 
 QT_BEGIN_NAMESPACE
+
+QT_IMPL_METATYPE_EXTERN(QGeoShape)
 
 QGeoShapePrivate::QGeoShapePrivate(QGeoShape::ShapeType type)
 :   type(type)
@@ -84,8 +51,7 @@ bool QGeoShapePrivate::operator==(const QGeoShapePrivate &other) const
     details of the associated areas in terms of QGeoCoordinate instances
     and distances in meters.
 
-    This class is a \l Q_GADGET since Qt 5.5. It can be
-    \l{Cpp_value_integration_positioning}{directly used from C++ and QML}.
+    This class is also accessible in QML as \l[QML]{geoShape}.
 */
 
 /*!
@@ -259,6 +225,11 @@ QGeoRectangle QGeoShape::boundingGeoRectangle() const
 }
 
 /*!
+    \property QGeoShape::center
+    \brief the coordinate at the geometric center of the shape.
+*/
+
+/*!
     Returns the coordinate located at the geometric center of the geo shape.
 
     \since 5.5
@@ -310,25 +281,48 @@ QString QGeoShape::toString() const
 }
 
 #ifndef QT_NO_DEBUG_STREAM
+static void formatGeoCoordinates(QDebug dbg, const QList<QGeoCoordinate> &coordinates)
+{
+    const auto size = coordinates.size();
+    dbg << size << ": ";
+    for (qsizetype i = 0; i < size; ++i) {
+        if (i > 0)
+            dbg << "; ";
+        if (i > 10) {
+            dbg << "...";
+            break;
+        }
+        dbg << '(' << coordinates.at(i).toString() << ')';
+    }
+}
+
 QDebug QGeoShape::debugStreaming(QDebug dbg, const QGeoShape &shape)
 {
     QDebugStateSaver saver(dbg);
-    dbg.nospace() << "QGeoShape(";
+    dbg.nospace().noquote() << "QGeoShape(";
     switch (shape.type()) {
     case QGeoShape::UnknownType:
         dbg << "Unknown";
         break;
-    case QGeoShape::RectangleType:
-        dbg << "Rectangle";
+    case QGeoShape::RectangleType: {
+        const auto &rect = static_cast<const QGeoRectangle &>(shape);
+        dbg << "Rectangle, (" << rect.topLeft().toString() << "), ("
+            << rect.bottomRight().toString() << ')';
         break;
+    }
     case QGeoShape::PathType:
-        dbg << "Path";
+        dbg << "Path, ";
+        formatGeoCoordinates(dbg, static_cast<const QGeoPath &>(shape).path());
         break;
     case QGeoShape::PolygonType:
-        dbg << "Polygon";
+        dbg << "Polygon, ";
+        formatGeoCoordinates(dbg, static_cast<const QGeoPolygon &>(shape).perimeter());
         break;
-    case QGeoShape::CircleType:
-        dbg << "Circle";
+    case QGeoShape::CircleType: {
+        const auto &circle = static_cast<const QGeoCircle &>(shape);
+        dbg << "Circle, center=(" << circle.center().toString() << "), radius=" << circle.radius();
+        break;
+    }
     }
 
     dbg << ')';
@@ -367,6 +361,13 @@ QDataStream &QGeoShape::dataStreamOut(QDataStream &stream, const QGeoShape &shap
         stream << p.perimeter().size();
         for (const auto &c: p.perimeter())
             stream << c;
+        if (stream.version() >= QDataStream::Qt_6_10) {
+            // serialize holes
+            const qsizetype holesCount = p.holesCount();
+            stream << holesCount;
+            for (qsizetype i = 0; i < holesCount; ++i)
+                stream << p.holePath(i);
+        }
         break;
     }
     }
@@ -420,7 +421,18 @@ QDataStream &QGeoShape::dataStreamIn(QDataStream &stream, QGeoShape &shape)
             stream >> c;
             l.append(c);
         }
-        shape = QGeoPolygon(l);
+        QGeoPolygon p(l);
+        if (stream.version() >= QDataStream::Qt_6_10) {
+            // deserialize holes
+            qsizetype holesCount = 0;
+            stream >> holesCount;
+            for (qsizetype i = 0; i < holesCount; ++i) {
+                QList<QGeoCoordinate> holePath;
+                stream >> holePath;
+                p.addHole(holePath);
+            }
+        }
+        shape = p;
         break;
     }
     }

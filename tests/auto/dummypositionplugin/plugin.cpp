@@ -1,36 +1,11 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 #include <QtPositioning/qgeopositioninfosource.h>
 #include <QtPositioning/qgeopositioninfosourcefactory.h>
+#include <QtPositioning/qgeosatelliteinfosource.h>
 #include <QObject>
 #include <QtPlugin>
-#include <QTimer>
 
 QT_USE_NAMESPACE
 
@@ -116,6 +91,66 @@ void DummyPluginSource::requestUpdate(int timeout)
 
 DummyPluginSource::~DummyPluginSource() { }
 
+class DummySatelliteSourcePlugin : public QGeoSatelliteInfoSource
+{
+    Q_OBJECT
+public:
+    DummySatelliteSourcePlugin(const QVariantMap &parameters, QObject *parent = 0);
+    ~DummySatelliteSourcePlugin();
+
+    int minimumUpdateInterval() const override;
+    Error error() const override;
+
+public slots:
+    void startUpdates() override;
+    void stopUpdates() override;
+    void requestUpdate(int timeout = 0) override;
+
+private:
+    Error lastError = QGeoSatelliteInfoSource::NoError;
+};
+
+DummySatelliteSourcePlugin::DummySatelliteSourcePlugin(const QVariantMap &parameters,
+                                                       QObject *parent)
+    : QGeoSatelliteInfoSource(parent)
+{
+    Q_UNUSED(parameters)
+}
+
+DummySatelliteSourcePlugin::~DummySatelliteSourcePlugin()
+{
+}
+
+int DummySatelliteSourcePlugin::minimumUpdateInterval() const
+{
+    return 100;
+}
+
+QGeoSatelliteInfoSource::Error DummySatelliteSourcePlugin::error() const
+{
+    return lastError;
+}
+
+void DummySatelliteSourcePlugin::startUpdates()
+{
+    lastError = QGeoSatelliteInfoSource::NoError;
+}
+
+void DummySatelliteSourcePlugin::stopUpdates()
+{
+    lastError = QGeoSatelliteInfoSource::NoError;
+}
+
+void DummySatelliteSourcePlugin::requestUpdate(int timeout)
+{
+    lastError = QGeoSatelliteInfoSource::NoError;
+    if (timeout < minimumUpdateInterval()) {
+        lastError = QGeoSatelliteInfoSource::UpdateTimeoutError;
+        emit errorOccurred(lastError);
+    }
+}
+
+
 class DummyPluginForTestsFactory : public QObject, public QGeoPositionInfoSourceFactory
 {
     Q_OBJECT
@@ -139,9 +174,7 @@ DummyPluginForTestsFactory::positionInfoSource(QObject *parent, const QVariantMa
 QGeoSatelliteInfoSource *
 DummyPluginForTestsFactory::satelliteInfoSource(QObject *parent, const QVariantMap &parameters)
 {
-    Q_UNUSED(parent);
-    Q_UNUSED(parameters);
-    return nullptr;
+    return new DummySatelliteSourcePlugin(parameters, parent);
 }
 
 QGeoAreaMonitorSource *DummyPluginForTestsFactory::areaMonitor(QObject *parent,

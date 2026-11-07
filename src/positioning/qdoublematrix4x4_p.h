@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtGui module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #ifndef QDOUBLEMATRIX4X4_H
 #define QDOUBLEMATRIX4X4_H
@@ -65,7 +30,7 @@ QT_BEGIN_NAMESPACE
  * Some methods have been removed.
  */
 
-class Q_POSITIONING_PRIVATE_EXPORT QDoubleMatrix4x4
+class Q_POSITIONING_EXPORT QDoubleMatrix4x4
 {
 public:
     inline QDoubleMatrix4x4() { setToIdentity(); }
@@ -114,7 +79,7 @@ public:
     friend QPointF operator*(const QDoubleMatrix4x4& matrix, const QPointF& point);
     friend QDoubleMatrix4x4 operator*(double factor, const QDoubleMatrix4x4& matrix);
     friend QDoubleMatrix4x4 operator*(const QDoubleMatrix4x4& matrix, double factor);
-    friend Q_POSITIONING_PRIVATE_EXPORT QDoubleMatrix4x4 operator/(const QDoubleMatrix4x4& matrix, double divisor);
+    friend Q_POSITIONING_EXPORT QDoubleMatrix4x4 operator/(const QDoubleMatrix4x4& matrix, double divisor);
 
     friend inline bool qFuzzyCompare(const QDoubleMatrix4x4& m1, const QDoubleMatrix4x4& m2);
 
@@ -160,7 +125,7 @@ public:
     void optimize();
 
 #ifndef QT_NO_DEBUG_STREAM
-    friend Q_POSITIONING_PRIVATE_EXPORT QDebug operator<<(QDebug dbg, const QDoubleMatrix4x4 &m);
+    friend Q_POSITIONING_EXPORT QDebug operator<<(QDebug dbg, const QDoubleMatrix4x4 &m);
 #endif
 
 private:
@@ -183,7 +148,8 @@ private:
 
     QDoubleMatrix4x4 orthonormalInverse() const;
 
-    void projectedRotate(double angle, double x, double y, double z);
+    void projectedRotate(double angle, double x, double y, double z,
+                         double distanceToPlane = 1024.0);
 };
 
 Q_DECLARE_TYPEINFO(QDoubleMatrix4x4, Q_RELOCATABLE_TYPE);
@@ -214,7 +180,7 @@ inline double& QDoubleMatrix4x4::operator()(int aRow, int aColumn)
     return m[aColumn][aRow];
 }
 
-Q_POSITIONING_PRIVATE_EXPORT QDoubleMatrix4x4 operator/(const QDoubleMatrix4x4& matrix, double divisor);
+Q_POSITIONING_EXPORT QDoubleMatrix4x4 operator/(const QDoubleMatrix4x4& matrix, double divisor);
 
 inline bool QDoubleMatrix4x4::isAffine() const
 {
@@ -861,22 +827,22 @@ inline QDoubleMatrix4x4 operator*(const QDoubleMatrix4x4& matrix, double factor)
 
 inline bool qFuzzyCompare(const QDoubleMatrix4x4& m1, const QDoubleMatrix4x4& m2)
 {
-    return qFuzzyCompare(m1.m[0][0], m2.m[0][0]) &&
-           qFuzzyCompare(m1.m[0][1], m2.m[0][1]) &&
-           qFuzzyCompare(m1.m[0][2], m2.m[0][2]) &&
-           qFuzzyCompare(m1.m[0][3], m2.m[0][3]) &&
-           qFuzzyCompare(m1.m[1][0], m2.m[1][0]) &&
-           qFuzzyCompare(m1.m[1][1], m2.m[1][1]) &&
-           qFuzzyCompare(m1.m[1][2], m2.m[1][2]) &&
-           qFuzzyCompare(m1.m[1][3], m2.m[1][3]) &&
-           qFuzzyCompare(m1.m[2][0], m2.m[2][0]) &&
-           qFuzzyCompare(m1.m[2][1], m2.m[2][1]) &&
-           qFuzzyCompare(m1.m[2][2], m2.m[2][2]) &&
-           qFuzzyCompare(m1.m[2][3], m2.m[2][3]) &&
-           qFuzzyCompare(m1.m[3][0], m2.m[3][0]) &&
-           qFuzzyCompare(m1.m[3][1], m2.m[3][1]) &&
-           qFuzzyCompare(m1.m[3][2], m2.m[3][2]) &&
-           qFuzzyCompare(m1.m[3][3], m2.m[3][3]);
+    return QtPrivate::fuzzyCompare(m1.m[0][0], m2.m[0][0])
+        && QtPrivate::fuzzyCompare(m1.m[0][1], m2.m[0][1])
+        && QtPrivate::fuzzyCompare(m1.m[0][2], m2.m[0][2])
+        && QtPrivate::fuzzyCompare(m1.m[0][3], m2.m[0][3])
+        && QtPrivate::fuzzyCompare(m1.m[1][0], m2.m[1][0])
+        && QtPrivate::fuzzyCompare(m1.m[1][1], m2.m[1][1])
+        && QtPrivate::fuzzyCompare(m1.m[1][2], m2.m[1][2])
+        && QtPrivate::fuzzyCompare(m1.m[1][3], m2.m[1][3])
+        && QtPrivate::fuzzyCompare(m1.m[2][0], m2.m[2][0])
+        && QtPrivate::fuzzyCompare(m1.m[2][1], m2.m[2][1])
+        && QtPrivate::fuzzyCompare(m1.m[2][2], m2.m[2][2])
+        && QtPrivate::fuzzyCompare(m1.m[2][3], m2.m[2][3])
+        && QtPrivate::fuzzyCompare(m1.m[3][0], m2.m[3][0])
+        && QtPrivate::fuzzyCompare(m1.m[3][1], m2.m[3][1])
+        && QtPrivate::fuzzyCompare(m1.m[3][2], m2.m[3][2])
+        && QtPrivate::fuzzyCompare(m1.m[3][3], m2.m[3][3]);
 }
 
 inline QPoint QDoubleMatrix4x4::map(const QPoint& point) const
@@ -931,12 +897,12 @@ inline void QDoubleMatrix4x4::viewport(const QRectF &rect)
 }
 
 #ifndef QT_NO_DEBUG_STREAM
-Q_POSITIONING_PRIVATE_EXPORT QDebug operator<<(QDebug dbg, const QDoubleMatrix4x4 &m);
+Q_POSITIONING_EXPORT QDebug operator<<(QDebug dbg, const QDoubleMatrix4x4 &m);
 #endif
 
 #ifndef QT_NO_DATASTREAM
-Q_POSITIONING_PRIVATE_EXPORT QDataStream &operator<<(QDataStream &, const QDoubleMatrix4x4 &);
-Q_POSITIONING_PRIVATE_EXPORT QDataStream &operator>>(QDataStream &, QDoubleMatrix4x4 &);
+Q_POSITIONING_EXPORT QDataStream &operator<<(QDataStream &, const QDoubleMatrix4x4 &);
+Q_POSITIONING_EXPORT QDataStream &operator>>(QDataStream &, QDoubleMatrix4x4 &);
 #endif
 
 

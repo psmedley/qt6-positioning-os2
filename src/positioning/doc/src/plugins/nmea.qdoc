@@ -1,29 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the documentation of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:FDL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Free Documentation License Usage
-** Alternatively, this file may be used under the terms of the GNU Free
-** Documentation License version 1.3 as published by the Free Software
-** Foundation and appearing in the file included in the packaging of
-** this file. Please review the following information to ensure
-** the GNU Free Documentation License version 1.3 requirements
-** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GFDL-1.3-no-invariants-only
 
 /*!
 \page position-plugin-nmea.html
@@ -52,6 +28,13 @@ The following table lists parameters that \e can be passed to the nmea plugin.
     \li nmea.source
     \li The source that will be used to get NMEA data.
 \row
+    \li nmea.baudrate
+    \li The baud rate to be used by the serial port connection, expressed with
+        a positive integer number. Typically it should be one of the values
+        from the \l QSerialPort::BaudRate enum. If the parameter is not
+        specified or does not contain a positive integer, the default value
+        of \c 4800 is used.
+\row
     \li nmea.satellite_info_simulation_interval
     \li The interval for reading satellite information data from the file in
         simulation mode.
@@ -78,7 +61,9 @@ serial port and file inputs.
     \li \c {serial:/dev/ttyUSB0}
     \li {1, 3} Use \b {serial:} keyword to specify that you want to get the nmea
         data from the serial port. The plugin will try to establish a connection
-        to port \c portname with baudrate = 4800 Bd. Upon successful connection
+        to port \c portname with a default baudrate = 4800 Bd (the baudrate
+        value can be specified using \b {nmea.baudrate} parameter). Upon
+        successful connection
         a text NMEA stream is expected to be received from the serial port.
         If you use \b {serial:} without any port name, the plugin will try to
         find one of the well known serial devices using vendor identifier. Note
@@ -108,6 +93,9 @@ serial port and file inputs.
 locate one of the well-known serial devices (as if \c {nmea.source = serial:}
 was specified).
 
+\warning The \c {socket://} scheme supports only unencrypted connection.
+Therefore it is only suitable for use within a host or over a trusted network.
+
 \section1 Position source usage example
 
 The following examples show how to create a \b nmea PositionSource
@@ -132,6 +120,7 @@ PositionSource {
 PositionSource {
     name: "nmea"
     PluginParameter { name: "nmea.source"; value: "serial:/dev/ttyACM0" }
+    PluginParameter { name: "nmea.baudrate"; value: 4800 }
 }
 \endcode
 
@@ -149,6 +138,7 @@ QGeoPositionInfoSource *socketPositionSource = QGeoPositionInfoSource::createSou
 
 // serial port
 params["nmea.source"] = "serial:/dev/ttyACM0";
+params["nmea.baudrate"] = 4800;
 QGeoPositionInfoSource *serialPositionSource = QGeoPositionInfoSource::createSource("nmea", params, this);
 \endcode
 
@@ -158,19 +148,40 @@ type of source data.
 \section1 Satellite information source usage example
 
 Apart from the position information, \b nmea plugin is also capable of providing
-satellite information. For now it does not have any QML object, but can be
-created directly from C++ code.
+satellite information.
+
+\section2 QML
+
+\code
+// serial port
+SatelliteSource {
+    name: "nmea"
+    PluginParameter { name: "nmea.source"; value: "serial:/dev/ttyUSB0" }
+    PluginParameter { name: "nmea.baudrate"; value: 9600 }
+}
+
+// socket
+SatelliteSource {
+    name: "nmea"
+    PluginParameter { name: "nmea.source"; value: "socket://localhost:22222" }
+}
+\endcode
+
+\section2 C++
 
 \code
 // serial port
 QVariantMap parameters;
 parameters["nmea.source"] = "serial:/dev/ttyUSB0";
+params["nmea.baudrate"] = 9600;
 QGeoSatelliteInfoSource *serialSource = QGeoSatelliteInfoSource::createSource("nmea", parameters, this);
 
 // socket
 parameters["nmea.source"] = "socket://localhost:22222";
 QGeoSatelliteInfoSource *socketSource = QGeoSatelliteInfoSource::createSource("nmea", parameters, this);
 \endcode
+
+\section2 Settings custom simulation speed
 
 If you want to use \l QGeoSatelliteInfoSource to read file with NMEA stream, you
 can also use additional parameter \c "nmea.satellite_info_simulation_interval".

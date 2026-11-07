@@ -1,32 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 Jolla Ltd.
-** Contact: Aaron McCarthy <aaron.mccarthy@jollamobile.com>
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 Jolla Ltd.
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 //TESTED_COMPONENT=src/location
 
@@ -35,6 +9,8 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QtNumeric>
+
+using namespace Qt::StringLiterals;
 
 #ifdef Q_OS_WIN
 
@@ -100,7 +76,7 @@ void tst_QNmeaPositionInfoSource::userEquivalentRangeError()
     QNmeaPositionInfoSource source(m_mode);
     QVERIFY(qIsNaN(source.userEquivalentRangeError()));
     source.setUserEquivalentRangeError(5.1);
-    QVERIFY(qFuzzyCompare(source.userEquivalentRangeError(), 5.1));
+    QCOMPARE(source.userEquivalentRangeError(), 5.1);
 }
 
 void tst_QNmeaPositionInfoSource::setUpdateInterval_delayedUpdate()
@@ -114,18 +90,30 @@ void tst_QNmeaPositionInfoSource::setUpdateInterval_delayedUpdate()
     QNmeaPositionInfoSourceProxy *proxy = static_cast<QNmeaPositionInfoSourceProxy *>(
             factory.createPositionInfoSourceProxy(&source));
 
+    // Android emulator is slow, so increase the update interval and all
+    // timeouts for it.
+#ifndef Q_OS_ANDROID
+    constexpr int updateInterval = 500;
+    constexpr int waitInterval = 600;
+    constexpr int maxDelay = 400;
+#else
+    constexpr int updateInterval = 1000;
+    constexpr int waitInterval = 1100;
+    constexpr int maxDelay = 900;
+#endif
+
     QSignalSpy spyUpdate(proxy->source(), SIGNAL(positionUpdated(QGeoPositionInfo)));
-    proxy->source()->setUpdateInterval(500);
+    proxy->source()->setUpdateInterval(updateInterval);
     proxy->source()->startUpdates();
 
-    QTest::qWait(600);
+    QTest::qWait(waitInterval);
     QDateTime now = QDateTime::currentDateTime();
     proxy->feedUpdate(now);
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
 
     // should have gotten the update immediately, and not have needed to
     // wait until the next interval
-    QVERIFY(now.time().msecsTo(QDateTime::currentDateTime().time()) < 400);
+    QVERIFY(now.time().msecsTo(QDateTime::currentDateTime().time()) < maxDelay);
 }
 
 void tst_QNmeaPositionInfoSource::lastKnownPosition()
@@ -141,7 +129,7 @@ void tst_QNmeaPositionInfoSource::lastKnownPosition()
     // trigger reading of data channel
     QSignalSpy spyTimeout(proxy->source(), SIGNAL(errorOccurred(QGeoPositionInfoSource::Error)));
     proxy->source()->requestUpdate(proxy->source()->minimumUpdateInterval());
-    QTRY_COMPARE(spyTimeout.count(), 1);
+    QTRY_COMPARE(spyTimeout.size(), 1);
     const QList<QVariant> arguments = spyTimeout.takeFirst();
     const auto error = arguments.at(0).value<QGeoPositionInfoSource::Error>();
     QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
@@ -153,7 +141,7 @@ void tst_QNmeaPositionInfoSource::lastKnownPosition()
     QTRY_COMPARE(proxy->source()->lastKnownPosition().timestamp(), dt);
 
     QList<QDateTime> dateTimes = createDateTimes(5);
-    for (int i=0; i<dateTimes.count(); i++) {
+    for (int i=0; i<dateTimes.size(); i++) {
         proxy->source()->requestUpdate(); // Irrelevant for this test
         proxy->feedUpdate(dateTimes[i]);
         QTRY_COMPARE(proxy->source()->lastKnownPosition().timestamp(), dateTimes[i]);
@@ -162,7 +150,7 @@ void tst_QNmeaPositionInfoSource::lastKnownPosition()
     proxy->source()->startUpdates();
     // if dateTimes are older than before, they will be ignored.
     dateTimes = createDateTimes(dateTimes.last().addMSecs(100), 5);
-    for (int i=0; i<dateTimes.count(); i++) {
+    for (int i=0; i<dateTimes.size(); i++) {
         proxy->feedUpdate(dateTimes[i]);
         QTRY_COMPARE(proxy->source()->lastKnownPosition().timestamp(), dateTimes[i]);
     }
@@ -179,7 +167,7 @@ void tst_QNmeaPositionInfoSource::beginWithBufferedData()
     QFETCH(UpdateTriggerMethod, trigger);
 
     QByteArray bytes;
-    for (int i=0; i<dateTimes.count(); i++)
+    for (int i=0; i<dateTimes.size(); i++)
         bytes += QLocationTestUtils::createRmcSentence(dateTimes[i]).toLatin1();
     QBuffer buffer;
     buffer.setData(bytes);
@@ -194,14 +182,14 @@ void tst_QNmeaPositionInfoSource::beginWithBufferedData()
         source.requestUpdate();
 
     if (m_mode == QNmeaPositionInfoSource::RealTimeMode) {
-        QTRY_COMPARE_WITH_TIMEOUT(spy.count(), 0, 300);
+        QTRY_COMPARE_WITH_TIMEOUT(spy.size(), 0, 300);
     } else {
         if (trigger == StartUpdatesMethod) {
-            QTRY_COMPARE(spy.count(), dateTimes.count());
-            for (int i=0; i<dateTimes.count(); i++)
+            QTRY_COMPARE(spy.size(), dateTimes.size());
+            for (int i=0; i<dateTimes.size(); i++)
                 QCOMPARE(spy.at(i).at(0).value<QGeoPositionInfo>().timestamp(), dateTimes[i]);
         } else if (trigger == RequestUpdatesMethod) {
-            QTRY_COMPARE(spy.count(), 1);
+            QTRY_COMPARE(spy.size(), 1);
             QCOMPARE(spy.at(0).at(0).value<QGeoPositionInfo>().timestamp(), dateTimes.first());
         }
     }
@@ -236,9 +224,9 @@ void tst_QNmeaPositionInfoSource::startUpdates()
     QSignalSpy spyUpdate(proxy->source(), SIGNAL(positionUpdated(QGeoPositionInfo)));
     proxy->source()->startUpdates();
 
-    for (int i=0; i<dateTimes.count(); i++)
+    for (int i=0; i<dateTimes.size(); i++)
         proxy->feedUpdate(dateTimes[i]);
-    QTRY_COMPARE(spyUpdate.count(), dateTimes.count());
+    QTRY_COMPARE(spyUpdate.size(), dateTimes.size());
 }
 
 void tst_QNmeaPositionInfoSource::startUpdates_data()
@@ -277,49 +265,49 @@ void tst_QNmeaPositionInfoSource::startUpdates_withTimeout()
         t.start();
 
         for (int j = 1; j < 4; ++j) {
-            QTRY_COMPARE(spyUpdate.count(), j);
-            QCOMPARE(spyTimeout.count(), 0);
+            QTRY_COMPARE(spyUpdate.size(), j);
+            QCOMPARE(spyTimeout.size(), 0);
             int time = t.elapsed();
             QVERIFY((time > j*1000 - 300) && (time < j*1000 + 300));
         }
 
         spyUpdate.clear();
 
-        QTRY_VERIFY_WITH_TIMEOUT((spyUpdate.count() == 0) && (spyTimeout.count() == 1), 7500);
+        QTRY_VERIFY_WITH_TIMEOUT((spyUpdate.size() == 0) && (spyTimeout.size() == 1), 7500);
         const QList<QVariant> arguments = spyTimeout.takeFirst();
         const auto error = arguments.at(0).value<QGeoPositionInfoSource::Error>();
         QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
         spyTimeout.clear();
 
-        QTRY_VERIFY_WITH_TIMEOUT((spyUpdate.count() == 1) && (spyTimeout.count() == 0), 7500);
+        QTRY_VERIFY_WITH_TIMEOUT((spyUpdate.size() == 1) && (spyTimeout.size() == 0), 7500);
 
     } else {
         // dt + 900
-        QTRY_VERIFY(spyUpdate.count() == 0 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 0 && spyTimeout.size() == 0);
 
         proxy->feedBytes(QLocationTestUtils::createRmcSentence(dt.addSecs(1)).toLatin1());
         // dt + 1200
-        QTRY_VERIFY(spyUpdate.count() == 1 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 1 && spyTimeout.size() == 0);
         spyUpdate.clear();
 
         // dt + 1900
-        QTRY_VERIFY(spyUpdate.count() == 0 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 0 && spyTimeout.size() == 0);
         proxy->feedBytes(QLocationTestUtils::createRmcSentence(dt.addSecs(2)).toLatin1());
 
         // dt + 2200
-        QTRY_VERIFY(spyUpdate.count() == 1 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 1 && spyTimeout.size() == 0);
         spyUpdate.clear();
 
         // dt + 2900
-        QTRY_VERIFY(spyUpdate.count() == 0 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 0 && spyTimeout.size() == 0);
         proxy->feedBytes(QLocationTestUtils::createRmcSentence(dt.addSecs(3)).toLatin1());
 
         // dt + 3200
-        QTRY_VERIFY(spyUpdate.count() == 1 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 1 && spyTimeout.size() == 0);
         spyUpdate.clear();
 
         // dt + 6900
-        QTRY_VERIFY(spyUpdate.count() == 0 && spyTimeout.count() == 1);
+        QTRY_VERIFY(spyUpdate.size() == 0 && spyTimeout.size() == 1);
         const QList<QVariant> arguments = spyTimeout.takeFirst();
         const auto error = arguments.at(0).value<QGeoPositionInfoSource::Error>();
         QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
@@ -327,7 +315,7 @@ void tst_QNmeaPositionInfoSource::startUpdates_withTimeout()
         proxy->feedBytes(QLocationTestUtils::createRmcSentence(dt.addSecs(7)).toLatin1());
 
         // dt + 7200
-        QTRY_VERIFY(spyUpdate.count() == 1 && spyTimeout.count() == 0);
+        QTRY_VERIFY(spyUpdate.size() == 1 && spyTimeout.size() == 0);
         spyUpdate.clear();
     }
 }
@@ -347,10 +335,10 @@ void tst_QNmeaPositionInfoSource::startUpdates_expectLatestUpdateOnly()
     proxy->source()->startUpdates();
 
     QList<QDateTime> dateTimes = createDateTimes(3);
-    for (int i=0; i<dateTimes.count(); i++)
+    for (int i=0; i<dateTimes.size(); i++)
         proxy->feedUpdate(dateTimes[i]);
 
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
     QCOMPARE(spyUpdate[0][0].value<QGeoPositionInfo>().timestamp(), dateTimes.last());
 }
 
@@ -373,16 +361,15 @@ void tst_QNmeaPositionInfoSource::startUpdates_waitForValidDateTime()
             factory.createPositionInfoSourceProxy(&source));
 
     QSignalSpy spy(proxy->source(), SIGNAL(positionUpdated(QGeoPositionInfo)));
-    QObject::connect(proxy->source(), &QNmeaPositionInfoSource::positionUpdated, [](const QGeoPositionInfo &info) {
-                                                                            qDebug() << info.timestamp();
-                                                                        });
+    QObject::connect(proxy->source(), &QNmeaPositionInfoSource::positionUpdated, this,
+                     [](const QGeoPositionInfo &info) { qDebug() << info.timestamp(); });
 
     proxy->source()->startUpdates();
     proxy->feedBytes(bytes);
     QTest::qWait(1000); // default push delay is 20ms
-    QTRY_COMPARE(spy.count(), dateTimes.count());
+    QTRY_COMPARE(spy.size(), dateTimes.size());
 
-    for (int i=0; i<spy.count(); i++) {
+    for (int i=0; i<spy.size(); i++) {
         QGeoPositionInfo pInfo = spy[i][0].value<QGeoPositionInfo>();
 
         QCOMPARE(pInfo.timestamp(), dateTimes[i]);
@@ -392,14 +379,14 @@ void tst_QNmeaPositionInfoSource::startUpdates_waitForValidDateTime()
         QCOMPARE(pInfo.hasAttribute(QGeoPositionInfo::HorizontalAccuracy),
                  expectHorizontalAccuracy[i]);
         if (pInfo.hasAttribute(QGeoPositionInfo::HorizontalAccuracy))
-            QVERIFY(qFuzzyCompare(pInfo.attribute(QGeoPositionInfo::HorizontalAccuracy), 35.7));
+            QCOMPARE(pInfo.attribute(QGeoPositionInfo::HorizontalAccuracy), 35.7);
 
         // Generated GSA sentences have hard coded VDOP of 4.0, which corrisponds to a vertical
         // accuracy of 40.8, for the user equivalent range error of 5.1 set above.
         QCOMPARE(pInfo.hasAttribute(QGeoPositionInfo::VerticalAccuracy),
                  expectVerticalAccuracy[i]);
         if (pInfo.hasAttribute(QGeoPositionInfo::VerticalAccuracy))
-            QVERIFY(qFuzzyCompare(pInfo.attribute(QGeoPositionInfo::VerticalAccuracy), 40.8));
+            QCOMPARE(pInfo.attribute(QGeoPositionInfo::VerticalAccuracy), 40.8);
     }
 }
 
@@ -475,7 +462,7 @@ void tst_QNmeaPositionInfoSource::requestUpdate_waitForValidDateTime()
     proxy->source()->requestUpdate();
 
     proxy->feedBytes(bytes);
-    QTRY_COMPARE(spy.count(), 1);
+    QTRY_COMPARE(spy.size(), 1);
     QCOMPARE(spy[0][0].value<QGeoPositionInfo>().timestamp(), dateTimes[0]);
 }
 
@@ -496,7 +483,7 @@ void tst_QNmeaPositionInfoSource::requestUpdate()
     QDateTime dt;
 
     proxy->source()->requestUpdate(100);
-    QTRY_COMPARE(spyTimeout.count(), 1);
+    QTRY_COMPARE(spyTimeout.size(), 1);
     auto error = spyTimeout[0][0].value<QGeoPositionInfoSource::Error>();
     QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
     spyTimeout.clear();
@@ -504,9 +491,9 @@ void tst_QNmeaPositionInfoSource::requestUpdate()
     dt = QDateTime::currentDateTimeUtc();
     proxy->feedUpdate(dt);
     proxy->source()->requestUpdate();
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
     QCOMPARE(spyUpdate[0][0].value<QGeoPositionInfo>().timestamp(), dt);
-    QCOMPARE(spyTimeout.count(), 0);
+    QCOMPARE(spyTimeout.size(), 0);
     spyUpdate.clear();
 
     // delay the update and expect it to be emitted after 300ms
@@ -514,9 +501,9 @@ void tst_QNmeaPositionInfoSource::requestUpdate()
     proxy->source()->requestUpdate(1000);
     QTest::qWait(300);
     proxy->feedUpdate(dt);
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
     QCOMPARE(spyUpdate[0][0].value<QGeoPositionInfo>().timestamp(), dt);
-    QCOMPARE(spyTimeout.count(), 0);
+    QCOMPARE(spyTimeout.size(), 0);
     spyUpdate.clear();
 
     // delay the update and expect errorOccurred() to be emitted
@@ -524,10 +511,10 @@ void tst_QNmeaPositionInfoSource::requestUpdate()
     proxy->source()->requestUpdate(500);
     QTest::qWait(1000);
     proxy->feedUpdate(dt);
-    QCOMPARE(spyTimeout.count(), 1);
+    QCOMPARE(spyTimeout.size(), 1);
     error = spyTimeout[0][0].value<QGeoPositionInfoSource::Error>();
     QCOMPARE(error, QGeoPositionInfoSource::UpdateTimeoutError);
-    QCOMPARE(spyUpdate.count(), 0);
+    QCOMPARE(spyUpdate.size(), 0);
     spyUpdate.clear();
 }
 
@@ -551,13 +538,13 @@ void tst_QNmeaPositionInfoSource::requestUpdate_after_start()
     proxy->source()->startUpdates();
     proxy->source()->requestUpdate(100);
     proxy->feedUpdate(dt);
-    QTRY_COMPARE(spyUpdate.count(), 1);
+    QTRY_COMPARE(spyUpdate.size(), 1);
     QCOMPARE(spyUpdate[0][0].value<QGeoPositionInfo>().timestamp(), dt);
-    QCOMPARE(spyTimeout.count(), 0);
+    QCOMPARE(spyTimeout.size(), 0);
     spyUpdate.clear();
 
     // Update has been emitted for requestUpdate(), shouldn't be emitted for startUpdates()
-    QTRY_COMPARE_WITH_TIMEOUT(spyUpdate.count(), 0, 1000);
+    QTRY_COMPARE_WITH_TIMEOUT(spyUpdate.size(), 0, 1000);
 }
 
 void tst_QNmeaPositionInfoSource::testWithBadNmea()
@@ -578,8 +565,8 @@ void tst_QNmeaPositionInfoSource::testWithBadNmea()
         proxy->source()->requestUpdate();
 
     proxy->feedBytes(bytes);
-    QTRY_COMPARE(spy.count(), dateTimes.count());
-    for (int i=0; i<dateTimes.count(); i++)
+    QTRY_COMPARE(spy.size(), dateTimes.size());
+    for (int i=0; i<dateTimes.size(); i++)
         QCOMPARE(spy[i][0].value<QGeoPositionInfo>().timestamp(), dateTimes[i]);
 }
 
@@ -591,7 +578,7 @@ void tst_QNmeaPositionInfoSource::testWithBadNmea_data()
 
     QDateTime firstDateTime = QDateTime::currentDateTimeUtc();
     QByteArray bad = QLocationTestUtils::createRmcSentence(firstDateTime.addSecs(1)).toLatin1();
-    bad = bad.mid(bad.length()/2);
+    bad = bad.mid(bad.size()/2);
     QDateTime lastDateTime = firstDateTime.addSecs(2);
 
     QByteArray bytes;
@@ -602,4 +589,296 @@ void tst_QNmeaPositionInfoSource::testWithBadNmea_data()
             << (QList<QDateTime>() << firstDateTime) << RequestUpdatesMethod;
     QTest::newRow("startUpdates(), bad second sentence") << bytes
             << (QList<QDateTime>() << firstDateTime << lastDateTime) << StartUpdatesMethod;
+}
+
+void tst_QNmeaPositionInfoSource::getPositionInfoFromNmea_data()
+{
+    QTest::addColumn<QByteArray>("bytes");
+    QTest::addColumn<bool>("expectedResult");
+    QTest::addColumn<QGeoPositionInfo>("expectedPosInfo");
+
+    // Invalid common cases
+
+    const QTime tm(9, 9, 24);
+
+    QByteArray msg = QLocationTestUtils::createGgaSentence(tm).toLatin1();
+    msg.replace("$GPGGA", "$GPGXX");
+    QTest::addRow("unknown_type") << msg << false << QGeoPositionInfo();
+
+    msg = QLocationTestUtils::createGgaSentence(tm).toLatin1();
+    char &crc = msg[msg.size() - 3];
+    crc ^= 0xFF; // XOR the CRC byte
+    QTest::addRow("wrong_CRC") << msg << false << QGeoPositionInfo();
+
+    msg = QLocationTestUtils::createGgaSentence(tm).toLatin1();
+    msg.replace("$GPGGA", "$GGA");
+    QTest::addRow("missing_talker_id") << msg << false << QGeoPositionInfo();
+
+    msg = QLocationTestUtils::createGgaSentence(tm).toLatin1();
+    msg.removeFirst();
+    QTest::addRow("invalid_start") << msg << false << QGeoPositionInfo();
+
+    msg = QLocationTestUtils::createGgaSentence(tm).toLatin1().chopped(4);
+    QTest::addRow("no_checksum") << msg << false << QGeoPositionInfo();
+
+    // Malformed data in GGA
+
+    QGeoPositionInfo info;
+    info.setTimestamp(QDateTime(QDate(), tm, QTimeZone::UTC));
+    QTest::addRow("GGA_wrong_lat_dir")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGGA,090924.000,2734.76859,X,15305.99361,E,1,04,,49.4,M,,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+    QTest::addRow("GGA_wrong_lon_dir")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGGA,090924.000,2734.76859,S,15305.99361,X,1,04,,49.4,M,,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+    QTest::addRow("GGA_malformed_lat")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGGA,090924.000,abc76859,S,15305.99361,E,1,04,,49.4,M,,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+    QTest::addRow("GGA_malformed_lon")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGGA,090924.000,2734.76859,S,15305.def,E,1,04,,49.4,M,,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.setTimestamp(QDateTime());
+    info.setCoordinate(QGeoCoordinate(-27.5794765, 153.0998935, 49.4));
+    QTest::addRow("GGA_malformed_time")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGGA,1234time,2734.76859,S,15305.99361,E,1,04,,49.4,M,,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.setTimestamp(QDateTime(QDate(), tm, QTimeZone::UTC));
+    QTest::addRow("GGA_malformed_hdop")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGGA,090924.000,2734.76859,S,15305.99361,E,1,04,hdop,49.4,M,,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.setCoordinate(QGeoCoordinate(-27.5794765, 153.0998935)); // no alt
+    QTest::addRow("GGA_malformed_alt")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGGA,090924.000,2734.76859,S,15305.99361,E,1,04,,4b.4,M,,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    // Malformed data in GSA
+
+    info = QGeoPositionInfo();
+
+    QTest::addRow("GSA_malformed_hdop")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGSA,A,3,,,,,,,,,,,,,3.0,foo,*"_L1).toLatin1()
+            << true
+            << info;
+
+    info.setAttribute(QGeoPositionInfo::HorizontalAccuracy, 2.0);
+    QTest::addRow("GSA_malformed_vdop")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPGSA,A,3,,,,,,,,,,,,,3.0,1.0,foo,*"_L1).toLatin1()
+            << true
+            << info;
+
+    // Malformed data in GLL
+
+    info = QGeoPositionInfo();
+    info.setCoordinate(QGeoCoordinate(-27.5794765, 153.0998935));
+
+    QTest::addRow("GLL_malformed_timestamp")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GNGLL,2734.76859,S,15305.99361,E,09092,A,D*"_L1).toLatin1()
+            << true
+            << info;
+
+    info.setCoordinate(QGeoCoordinate());
+    info.setTimestamp(QDateTime(QDate(), tm, QTimeZone::UTC));
+
+    QTest::addRow("GLL_wrong_lat_dir")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GNGLL,2734.76859,W,15305.99361,E,090924,A,D*"_L1).toLatin1()
+            << true
+            << info;
+
+    QTest::addRow("GLL_wrong_lon_dir")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GNGLL,2734.76859,S,15305.99361,N,090924,A,D*"_L1).toLatin1()
+            << true
+            << info;
+
+    QTest::addRow("GLL_malformed_lat")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GNGLL,27a4.7b8c9,S,15305.99361,E,090924,A,D*"_L1).toLatin1()
+            << true
+            << info;
+
+    QTest::addRow("GLL_malformed_lon")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GNGLL,2734.76859,S,15d0e.f9361,E,090924,A,D*"_L1).toLatin1()
+            << true
+            << info;
+
+    // Malformed data in RMC
+
+    info = QGeoPositionInfo();
+    info.setTimestamp(QDateTime(QDate(), tm, QTimeZone::UTC));
+
+    QTest::addRow("RMC_malformed_short_date")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,090924.000,A,,,,,,,12345,,,*"_L1).toLatin1()
+            << true
+            << info;
+
+    info.setTimestamp(QDateTime(QDate(2025, 5, 4), QTime(), QTimeZone::UTC));
+
+    QTest::addRow("RMC_malformed_time")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,abcdef.xyz,A,,,,,,,040525,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.setTimestamp(QDateTime(QDate(2025, 5, 4), tm, QTimeZone::UTC));
+
+    QTest::addRow("RMC_wrong_lat_dir")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,090924.000,A,2734.76859,X,15305.99361,E,,,040525,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    QTest::addRow("RMC_wrong_lon_dir")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,090924.000,A,2734.76859,S,15305.99361,X,,,040525,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    QTest::addRow("RMC_malformed_lat")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,090924.000,A,abcde.fghij,S,15305.99361,E,,,040525,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    QTest::addRow("RMC_malformed_lon")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,090924.000,A,2734.76859,S,abcde.fghij,E,,,040525,,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.setCoordinate(QGeoCoordinate(-27.5794765, 153.0998935));
+    info.setAttribute(QGeoPositionInfo::Direction, 45.0);
+
+    QTest::addRow("RMC_malformed_speed")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,090924.000,A,2734.76859,S,15305.99361,E,abc,45.0,040525,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.removeAttribute(QGeoPositionInfo::Direction);
+    info.setAttribute(QGeoPositionInfo::GroundSpeed, qreal(0.7 * 1.852 / 3.6));
+
+    QTest::addRow("RMC_malformed_bearing")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,090924.000,A,2734.76859,S,15305.99361,E,0.7,abc,040525,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.removeAttribute(QGeoPositionInfo::GroundSpeed);
+
+    QTest::addRow("RMC_malformed_mag_var")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPRMC,090924.000,A,2734.76859,S,15305.99361,E,,,040525,abc,E*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    // Malformed data in VTG
+
+    info = QGeoPositionInfo();
+    info.setAttribute(QGeoPositionInfo::Direction, 8.4);
+
+    QTest::addRow("VTG_malformed_speed")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GNVTG,8.4,T,,M,1.3,N,abc,K,D*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info = QGeoPositionInfo();
+    info.setAttribute(QGeoPositionInfo::GroundSpeed, 5.7 / 3.6);
+
+    QTest::addRow("VTG_malformed_direction")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GNVTG,abc,T,,M,1.3,N,5.7,K,D*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    // Malformed data in ZDA
+
+    info = QGeoPositionInfo();
+    info.setTimestamp(QDateTime(QDate(), tm, QTimeZone::UTC));
+
+    QTest::addRow("ZDA_short_year")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPZDA,090924.000,04,05,25,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.setTimestamp(QDateTime(QDate(2025, 5, 4), QTime(), QTimeZone::UTC));
+
+    QTest::addRow("ZDA_invalid_time")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPZDA,abc,04,05,2025,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    info.setTimestamp(QDateTime(QDate(), tm, QTimeZone::UTC));
+
+    QTest::addRow("ZDA_malformed_day")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPZDA,090924.000,abc,05,2025,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+
+    QTest::addRow("ZDA_malformed_month")
+            << QLocationTestUtils::addNmeaChecksumAndBreaks(
+                       "$GPZDA,090924.000,04,abc,2025,,*"_L1)
+                       .toLatin1()
+            << true
+            << info;
+}
+
+void tst_QNmeaPositionInfoSource::getPositionInfoFromNmea()
+{
+    QFETCH(const QByteArray, bytes);
+    QFETCH(const bool, expectedResult);
+    QFETCH(const QGeoPositionInfo, expectedPosInfo);
+
+    QGeoPositionInfo info;
+    TestNmeaPosInfoSource source(m_mode);
+    const bool res = source.getPosInfoFromNmea(bytes, info);
+
+    QCOMPARE_EQ(res, expectedResult);
+    QCOMPARE_EQ(info, expectedPosInfo);
 }

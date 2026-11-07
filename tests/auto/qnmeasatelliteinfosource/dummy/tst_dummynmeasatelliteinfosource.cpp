@@ -1,35 +1,12 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the test suite of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:GPL-EXCEPT$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2021 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 #include <QTest>
 #include <QSignalSpy>
 #include <QtPositioning/QNmeaSatelliteInfoSource>
 #include "../../utils/qnmeaproxyfactory.h"
+
+#include <memory>
 
 class DummyNmeaSatelliteInfoSource : public QNmeaSatelliteInfoSource
 {
@@ -39,11 +16,42 @@ public:
     DummyNmeaSatelliteInfoSource(QObject *parent = 0);
 
 protected:
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
     QGeoSatelliteInfo::SatelliteSystem parseSatellitesInUseFromNmea(const char *data, int size,
-                                                                    QList<int> &pnrsInUse) override;
+                                                                    QList<int> &pnrsInUse)
+                                                                    QT6_ONLY(override)
+    {
+        return parseSatellitesInUseFromNmeaImpl(QByteArrayView{data, size}, pnrsInUse);
+    }
+
     SatelliteInfoParseStatus parseSatelliteInfoFromNmea(const char *data, int size,
                                                         QList<QGeoSatelliteInfo> &infos,
-                                                        QGeoSatelliteInfo::SatelliteSystem &system) override;
+                                                        QGeoSatelliteInfo::SatelliteSystem &system)
+                                                        QT6_ONLY(override)
+    {
+        return parseSatelliteInfoImpl(QByteArrayView{data, size}, infos, system);
+    }
+#else
+    QGeoSatelliteInfo::SatelliteSystem parseSatellitesInUseFromNmea(QByteArrayView data,
+                                                                    QList<int> &pnrsInUse)
+                                                                    QT7_ONLY(override)
+    {
+        return parseSatellitesInUseFromNmeaImpl(data, pnrsInUse);
+    }
+    SatelliteInfoParseStatus parseSatelliteInfoFromNmea(QByteArrayView data,
+                                                        QList<QGeoSatelliteInfo> &infos,
+                                                        QGeoSatelliteInfo::SatelliteSystem &system)
+                                                        QT7_ONLY(override)
+    {
+        return parseSatelliteInfoImpl(data, infos, system);
+    }
+#endif
+private:
+    QGeoSatelliteInfo::SatelliteSystem parseSatellitesInUseFromNmeaImpl(QByteArrayView data,
+                                                                        QList<int> &pnrsInUse);
+    SatelliteInfoParseStatus parseSatelliteInfoImpl(QByteArrayView data,
+                                                    QList<QGeoSatelliteInfo> &infos,
+                                                    QGeoSatelliteInfo::SatelliteSystem &system);
 };
 
 DummyNmeaSatelliteInfoSource::DummyNmeaSatelliteInfoSource(QObject *parent)
@@ -52,15 +60,15 @@ DummyNmeaSatelliteInfoSource::DummyNmeaSatelliteInfoSource(QObject *parent)
 }
 
 QGeoSatelliteInfo::SatelliteSystem
-DummyNmeaSatelliteInfoSource::parseSatellitesInUseFromNmea(const char *data, int size,
-                                                           QList<int> &pnrsInUse)
+DummyNmeaSatelliteInfoSource::parseSatellitesInUseFromNmeaImpl(QByteArrayView data,
+                                                               QList<int> &pnrsInUse)
 {
     // expected format: "USE:num1;num2;num3\n"
     // example: "USE:1;3;4;7\n"
-    if (!data || !size)
+    if (data.isEmpty())
         return QGeoSatelliteInfo::Undefined;
 
-    QString str = QLatin1String(data, size).toString();
+    QString str = QLatin1String(data).toString();
     if (!str.startsWith("USE:"))
         return QGeoSatelliteInfo::Undefined;
 
@@ -80,16 +88,16 @@ DummyNmeaSatelliteInfoSource::parseSatellitesInUseFromNmea(const char *data, int
 }
 
 QNmeaSatelliteInfoSource::SatelliteInfoParseStatus
-DummyNmeaSatelliteInfoSource::parseSatelliteInfoFromNmea(const char *data, int size,
-                                                         QList<QGeoSatelliteInfo> &infos,
-                                                         QGeoSatelliteInfo::SatelliteSystem &system)
+DummyNmeaSatelliteInfoSource::parseSatelliteInfoImpl(QByteArrayView data,
+                                                     QList<QGeoSatelliteInfo> &infos,
+                                                     QGeoSatelliteInfo::SatelliteSystem &system)
 {
     // expected format: "INFO:system,identifier;system,identifier;system,identifier\n"
     // example: "INFO:1,5;1,7;1,15\n"
-    if (!data || !size)
+    if (data.isEmpty())
         return NotParsed;
 
-    QString str = QLatin1String(data, size).toString();
+    QString str = QLatin1String(data).toString();
     if (!str.startsWith("INFO:"))
         return NotParsed;
 
@@ -126,7 +134,7 @@ void tst_DummyNmeaSatelliteInfoSource::testOverloadedParseFunction()
 {
     DummyNmeaSatelliteInfoSource source;
     QNmeaProxyFactory factory;
-    QScopedPointer<QNmeaSatelliteInfoSourceProxy> proxy(
+    std::unique_ptr<QNmeaSatelliteInfoSourceProxy> proxy(
             factory.createSatelliteInfoSourceProxy(&source));
 
     QSignalSpy inUseSpy(proxy->source(), &QNmeaSatelliteInfoSource::satellitesInUseUpdated);
@@ -139,8 +147,8 @@ void tst_DummyNmeaSatelliteInfoSource::testOverloadedParseFunction()
     // then - used ones
     proxy->feedBytes("USE:5;15\n");
 
-    QTRY_VERIFY_WITH_TIMEOUT(inUseSpy.count() == 1, 10000);
-    QTRY_VERIFY_WITH_TIMEOUT(inViewSpy.count() == 1, 10000);
+    QTRY_VERIFY_WITH_TIMEOUT(inUseSpy.size() == 1, 10000);
+    QTRY_VERIFY_WITH_TIMEOUT(inViewSpy.size() == 1, 10000);
 
     QGeoSatelliteInfo info_1_5;
     info_1_5.setSatelliteSystem(QGeoSatelliteInfo::GPS);

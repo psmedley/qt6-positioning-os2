@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "locationsingleton_p.h"
 #include <QtPositioning/private/qwebmercator_p.h>
@@ -89,7 +54,7 @@ LocationSingleton::LocationSingleton(QObject *parent)
 }
 
 /*!
-    \qmlmethod coordinate ::QtPositioning::coordinate()
+    \qmlmethod coordinate QtPositioning::coordinate()
 
     Constructs an invalid coordinate.
 
@@ -113,11 +78,11 @@ QGeoCoordinate LocationSingleton::coordinate(double latitude, double longitude, 
 }
 
 /*!
-    \qmlmethod geoshape QtPositioning::shape() const
+    \qmlmethod geoShape QtPositioning::shape() const
 
-    Constructs an invalid geoshape.
+    Constructs an invalid geoShape.
 
-    \sa {geoshape}
+    \sa {geoShape}
 */
 QGeoShape LocationSingleton::shape() const
 {
@@ -125,11 +90,11 @@ QGeoShape LocationSingleton::shape() const
 }
 
 /*!
-    \qmlmethod georectangle QtPositioning::rectangle() const
+    \qmlmethod geoRectangle QtPositioning::rectangle() const
 
-    Constructs an invalid georectangle.
+    Constructs an invalid geoRectangle.
 
-    \sa {georectangle}
+    \sa {geoRectangle}
 */
 QGeoRectangle LocationSingleton::rectangle() const
 {
@@ -137,12 +102,12 @@ QGeoRectangle LocationSingleton::rectangle() const
 }
 
 /*!
-    \qmlmethod georectangle QtPositioning::rectangle(coordinate center, real width, real height) const
+    \qmlmethod geoRectangle QtPositioning::rectangle(coordinate center, real width, real height) const
 
-    Constructs a georectangle centered at \a center with a width of \a width degrees and a hight of
+    Constructs a geoRectangle centered at \a center with a width of \a width degrees and a hight of
     \a height degrees.
 
-    \sa {georectangle}
+    \sa {geoRectangle}
 */
 QGeoRectangle LocationSingleton::rectangle(const QGeoCoordinate &center,
                                            double width, double height) const
@@ -151,12 +116,12 @@ QGeoRectangle LocationSingleton::rectangle(const QGeoCoordinate &center,
 }
 
 /*!
-    \qmlmethod georectangle QtPositioning::rectangle(coordinate topLeft, coordinate bottomRight) const
+    \qmlmethod geoRectangle QtPositioning::rectangle(coordinate topLeft, coordinate bottomRight) const
 
-    Constructs a georectangle with its top left corner positioned at \a topLeft and its bottom
+    Constructs a geoRectangle with its top left corner positioned at \a topLeft and its bottom
     right corner positioned at \a {bottomRight}.
 
-    \sa {georectangle}
+    \sa {geoRectangle}
 */
 QGeoRectangle LocationSingleton::rectangle(const QGeoCoordinate &topLeft,
                                            const QGeoCoordinate &bottomRight) const
@@ -165,12 +130,12 @@ QGeoRectangle LocationSingleton::rectangle(const QGeoCoordinate &topLeft,
 }
 
 /*!
-    \qmlmethod georectangle QtLocation5::QtLocation::rectangle(list<coordinate> coordinates) const
+    \qmlmethod geoRectangle QtPositioning::rectangle(list<coordinate> coordinates) const
 
-    Constructs a georectangle from the list of coordinates, the returned list is the smallest possible
+    Constructs a geoRectangle from the list of coordinates, the returned list is the smallest possible
     containing all the coordinates.
 
-    \sa {georectangle}
+    \sa {geoRectangle}
 */
 QGeoRectangle LocationSingleton::rectangle(const QVariantList &coordinates) const
 {
@@ -184,11 +149,11 @@ QGeoRectangle LocationSingleton::rectangle(const QVariantList &coordinates) cons
 }
 
 /*!
-    \qmlmethod geocircle QtPositioning::circle() const
+    \qmlmethod geoCircle QtPositioning::circle() const
 
-    Constructs an invalid geocircle.
+    Constructs an invalid geoCircle.
 
-    \sa {geocircle}
+    \sa {geoCircle}
 */
 QGeoCircle LocationSingleton::circle() const
 {
@@ -196,9 +161,9 @@ QGeoCircle LocationSingleton::circle() const
 }
 
 /*!
-    \qmlmethod geocircle QtPositioning::circle(coordinate center, real radius) const
+    \qmlmethod geoCircle QtPositioning::circle(coordinate center, real radius) const
 
-    Constructs a geocircle centered at \a center with a radius of \a radius meters.
+    Constructs a geoCircle centered at \a center with a radius of \a radius meters.
 */
 QGeoCircle LocationSingleton::circle(const QGeoCoordinate &center, qreal radius) const
 {
@@ -206,11 +171,11 @@ QGeoCircle LocationSingleton::circle(const QGeoCoordinate &center, qreal radius)
 }
 
 /*!
-    \qmlmethod geopath QtPositioning::path() const
+    \qmlmethod geoPath QtPositioning::path() const
 
-    Constructs an empty geopath.
+    Constructs an empty geoPath.
 
-    \sa {geopath}
+    \sa {geoPath}
     \since 5.9
 */
 QGeoPath LocationSingleton::path() const
@@ -219,11 +184,11 @@ QGeoPath LocationSingleton::path() const
 }
 
 /*!
-    \qmlmethod geopath QtPositioning::path(list<coordinate> coordinates, real width) const
+    \qmlmethod geoPath QtPositioning::path(list<coordinate> coordinates, real width) const
 
-    Constructs a geopath from coordinates and width.
+    Constructs a geoPath from coordinates and width.
 
-    \sa {geopath}
+    \sa {geoPath}
     \since 5.9
 */
 QGeoPath LocationSingleton::path(const QJSValue &value, qreal width) const
@@ -249,11 +214,11 @@ QGeoPath LocationSingleton::path(const QJSValue &value, qreal width) const
 }
 
 /*!
-    \qmlmethod geopolygon QtPositioning::polygon() const
+    \qmlmethod geoPolygon QtPositioning::polygon() const
 
     Constructs an empty polygon.
 
-    \sa {geopolygon}
+    \sa {geoPolygon}
     \since 5.10
 */
 QGeoPolygon LocationSingleton::polygon() const
@@ -262,11 +227,11 @@ QGeoPolygon LocationSingleton::polygon() const
 }
 
 /*!
-    \qmlmethod geopolygon QtPositioning::polygon(list<coordinate> coordinates) const
+    \qmlmethod geoPolygon QtPositioning::polygon(list<coordinate> coordinates) const
 
     Constructs a polygon from coordinates.
 
-    \sa {geopolygon}
+    \sa {geoPolygon}
     \since 5.10
 */
 QGeoPolygon LocationSingleton::polygon(const QVariantList &coordinates) const
@@ -281,11 +246,11 @@ QGeoPolygon LocationSingleton::polygon(const QVariantList &coordinates) const
 }
 
 /*!
-    \qmlmethod geopolygon QtPositioning::polygon(list<coordinate> perimeter, list<list<coordinate>> holes) const
+    \qmlmethod geoPolygon QtPositioning::polygon(list<coordinate> perimeter, list<list<coordinate>> holes) const
 
     Constructs a polygon from coordinates for perimeter and inner holes.
 
-    \sa {geopolygon}
+    \sa {geoPolygon}
     \since 5.12
 */
 QGeoPolygon LocationSingleton::polygon(const QVariantList &perimeter, const QVariantList &holes) const
@@ -314,11 +279,11 @@ QGeoPolygon LocationSingleton::polygon(const QVariantList &perimeter, const QVar
 }
 
 /*!
-    \qmlmethod geocircle QtPositioning::shapeToCircle(geoshape shape) const
+    \qmlmethod geoCircle QtPositioning::shapeToCircle(geoShape shape) const
 
-    Converts \a shape to a geocircle.
+    Converts \a shape to a geoCircle.
 
-    \sa {geocircle}
+    \sa {geoCircle}
     \since 5.5
 */
 QGeoCircle LocationSingleton::shapeToCircle(const QGeoShape &shape) const
@@ -327,11 +292,11 @@ QGeoCircle LocationSingleton::shapeToCircle(const QGeoShape &shape) const
 }
 
 /*!
-    \qmlmethod georectangle QtPositioning::shapeToRectangle(geoshape shape) const
+    \qmlmethod geoRectangle QtPositioning::shapeToRectangle(geoShape shape) const
 
-    Converts \a shape to a georectangle.
+    Converts \a shape to a geoRectangle.
 
-    \sa {georectangle}
+    \sa {geoRectangle}
     \since 5.5
 */
 QGeoRectangle LocationSingleton::shapeToRectangle(const QGeoShape &shape) const
@@ -340,11 +305,11 @@ QGeoRectangle LocationSingleton::shapeToRectangle(const QGeoShape &shape) const
 }
 
 /*!
-    \qmlmethod geopath QtPositioning::shapeToPath(geoshape shape) const
+    \qmlmethod geoPath QtPositioning::shapeToPath(geoShape shape) const
 
-    Converts \a shape to a geopath.
+    Converts \a shape to a geoPath.
 
-    \sa {geopath}
+    \sa {geoPath}
     \since 5.9
 */
 QGeoPath LocationSingleton::shapeToPath(const QGeoShape &shape) const
@@ -353,11 +318,11 @@ QGeoPath LocationSingleton::shapeToPath(const QGeoShape &shape) const
 }
 
 /*!
-    \qmlmethod geopolygon QtPositioning::shapeToPolygon(geoshape shape) const
+    \qmlmethod geoPolygon QtPositioning::shapeToPolygon(geoShape shape) const
 
     Converts \a shape to a polygon.
 
-    \sa {geopolygon}
+    \sa {geoPolygon}
     \since 5.10
 */
 QGeoPolygon LocationSingleton::shapeToPolygon(const QGeoShape &shape) const

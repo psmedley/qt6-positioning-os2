@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 #include "qwebmercator_p.h"
 
 #include "qgeocoordinate.h"
@@ -44,21 +9,28 @@
 #include <qmath.h>
 
 #include "qdoublevector2d_p.h"
-#include "qdoublevector3d_p.h"
 
 QT_BEGIN_NAMESPACE
+// We reverse the y-direction to make North be its decreasing direction, which
+// is "up" in computer graphics. We offset it by 0.5 to put the range -85 deg to
+// +85 deg latitude into the unit interval. The x-coordinate maps the range from
+// -180 deg to +180 deg longitude into its unit interval, with The Prime
+// Meridian mapped to x = 0.5. The x-coordinate is formally periodic, with
+// period 1, so adding or subtracting any whole number gets a representation of
+// the same longitude.
+
+// As latitudes approach ±90, the Mercator y-Coordinate aproaches ∓infinity. We
+// limit that to avoid numerical problems. Here the limit, -4 <= y <= 5, is
+// chosen such that only points beyond ±89.9999999999 deg latituide are cut off,
+// which matches the accuracy of qFuzzyCompare()
+const static double yCutOff = 4.0;
 
 QDoubleVector2D QWebMercator::coordToMercator(const QGeoCoordinate &coord)
 {
-    const double pi = M_PI;
-
-    double lon = coord.longitude() / 360.0 + 0.5;
-
-    double lat = coord.latitude();
-    lat = 0.5 - (std::log(std::tan((pi / 4.0) + (pi / 2.0) * lat / 180.0)) / pi) / 2.0;
-    lat = qBound(0.0, lat, 1.0);
-
-    return QDoubleVector2D(lon, lat);
+    const double x = coord.longitude() / 360.0 + 0.5;
+    const double lat = coord.latitude();
+    const double y = (1.0 - std::log(std::tan(qDegreesToRadians((90.0 + lat) / 2.0))) / M_PI) / 2.0;
+    return QDoubleVector2D(x, qBound(-yCutOff, y, 1.0 + yCutOff));
 }
 
 double QWebMercator::realmod(const double a, const double b)
@@ -69,38 +41,26 @@ double QWebMercator::realmod(const double a, const double b)
 
 QGeoCoordinate QWebMercator::mercatorToCoord(const QDoubleVector2D &mercator)
 {
-    const double pi = M_PI;
-
     double fx = mercator.x();
-    double fy = mercator.y();
-
-    if (fy < 0.0)
-        fy = 0.0;
-    else if (fy > 1.0)
-        fy = 1.0;
+    const double fy = mercator.y();
 
     double lat;
-
-    if (fy == 0.0)
+    if (fy <= -yCutOff)
         lat = 90.0;
-    else if (fy == 1.0)
+    else if (fy >= 1.0 + yCutOff)
         lat = -90.0;
     else
-        lat = (180.0 / pi) * (2.0 * std::atan(std::exp(pi * (1.0 - 2.0 * fy))) - (pi / 2.0));
+        lat = qRadiansToDegrees(2.0 * std::atan(std::exp(M_PI * (1.0 - 2.0 * fy)))) - 90.0;
 
-    double lng;
-    if (fx >= 0) {
-        lng = realmod(fx, 1.0);
-    } else {
-        lng = realmod(1.0 - realmod(-1.0 * fx, 1.0), 1.0);
-    }
-
-    lng = lng * 360.0 - 180.0;
+    if (fx < 0) // Map to the +ve unit interval:
+        fx = 1.0 - realmod(-fx, 1.0);
+    const double lng = realmod(fx, 1.0) * 360.0 - 180.0;
 
     return QGeoCoordinate(lat, lng, 0.0);
 }
 
-QGeoCoordinate QWebMercator::coordinateInterpolation(const QGeoCoordinate &from, const QGeoCoordinate &to, qreal progress)
+QGeoCoordinate QWebMercator::coordinateInterpolation(const QGeoCoordinate &from,
+                                                     const QGeoCoordinate &to, qreal progress)
 {
     QDoubleVector2D s = QWebMercator::coordToMercator(from);
     QDoubleVector2D e = QWebMercator::coordToMercator(to);

@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 #include "qgeopositioninfo.h"
 #include "private/qgeopositioninfo_p.h"
 #include <QHash>
@@ -46,6 +11,8 @@
 #include <algorithm>
 
 QT_BEGIN_NAMESPACE
+
+QT_IMPL_METATYPE_EXTERN(QGeoPositionInfo)
 
 /*!
     \class QGeoPositionInfo
@@ -73,6 +40,10 @@ QT_BEGIN_NAMESPACE
     \value MagneticVariation The angle between the horizontal component of the magnetic field and true north, in degrees. Also known as magnetic declination. A positive value indicates a clockwise direction from true north and a negative value indicates a counter-clockwise direction.
     \value HorizontalAccuracy The accuracy of the provided latitude-longitude value, in meters.
     \value VerticalAccuracy The accuracy of the provided altitude value, in meters.
+    \value DirectionAccuracy The accuracy of the provided bearing, in degrees.
+    This attribute is available only on Android (API level 26 or above) and
+    macOS/iOS. See corresponding \l {Android getBearingAccuracyDegrees}
+    {Android} and \l {iOS courseAccuracy}{Apple} documentation for more details.
 
     NMEA protocol also suggests another type of accuracy - PositionAccuracy,
     which is a 3D accuracy value. Qt does not provide a separate attribute for
@@ -173,6 +144,12 @@ QGeoPositionInfo &QGeoPositionInfo::operator=(const QGeoPositionInfo & other)
 */
 
 /*!
+    \fn void QGeoPositionInfo::swap(QGeoPositionInfo &other)
+    \since 6.2
+    \memberswap{position information}
+*/
+
+/*!
     Returns true if the timestamp() and coordinate() values are both valid.
 
     \sa QGeoCoordinate::isValid(), QDateTime::isValid()
@@ -253,9 +230,7 @@ void QGeoPositionInfo::setAttribute(Attribute attribute, qreal value)
 */
 qreal QGeoPositionInfo::attribute(Attribute attribute) const
 {
-    if (d->doubleAttribs.contains(attribute))
-        return d->doubleAttribs[attribute];
-    return qQNaN();
+    return d->doubleAttribs.value(attribute, qQNaN());
 }
 
 /*!
@@ -263,8 +238,11 @@ qreal QGeoPositionInfo::attribute(Attribute attribute) const
 */
 void QGeoPositionInfo::removeAttribute(Attribute attribute)
 {
-    d.detach();
-    d->doubleAttribs.remove(attribute);
+    const auto it = d->doubleAttribs.constFind(attribute);
+    if (it != d->doubleAttribs.cend()) {
+        d.detach();
+        d->doubleAttribs.erase(it);
+    }
 }
 
 /*!
@@ -302,7 +280,7 @@ QDebug QGeoPositionInfo::debugStreaming(QDebug dbg, const QGeoPositionInfo &info
 
     QList<QGeoPositionInfo::Attribute> attribs = info.d->doubleAttribs.keys();
     std::stable_sort(attribs.begin(), attribs.end()); // Output a sorted list from an unsorted hash.
-    for (int i = 0; i < attribs.count(); ++i) {
+    for (int i = 0; i < attribs.size(); ++i) {
         dbg << ", ";
         switch (attribs[i]) {
             case QGeoPositionInfo::Direction:
@@ -323,6 +301,9 @@ QDebug QGeoPositionInfo::debugStreaming(QDebug dbg, const QGeoPositionInfo &info
             case QGeoPositionInfo::VerticalAccuracy:
                 dbg << "VerticalAccuracy=";
                 break;
+            case QGeoPositionInfo::DirectionAccuracy:
+                dbg << "DirectionAccuracy=";
+                break;
         }
         dbg << info.d->doubleAttribs[attribs[i]];
     }
@@ -342,7 +323,7 @@ QDebug QGeoPositionInfo::debugStreaming(QDebug dbg, const QGeoPositionInfo &info
 */
 QDataStream &QGeoPositionInfo::dataStreamOut(QDataStream &stream, QGeoPositionInfo::Attribute attr)
 {
-    return stream << int(attr);
+    return stream << qint32(attr);
 }
 
 /*!
@@ -354,7 +335,7 @@ QDataStream &QGeoPositionInfo::dataStreamOut(QDataStream &stream, QGeoPositionIn
 */
 QDataStream &QGeoPositionInfo::dataStreamIn(QDataStream &stream, QGeoPositionInfo::Attribute &attr)
 {
-    int a;
+    qint32 a;
     stream >> a;
     attr = static_cast<QGeoPositionInfo::Attribute>(a);
     return stream;

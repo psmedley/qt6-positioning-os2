@@ -1,43 +1,7 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 Jolla Ltd.
-** Contact: Aaron McCarthy <aaron.mccarthy@jollamobile.com>
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 Jolla Ltd.
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 #include "qnmeapositioninfosource_p.h"
 #include "qgeopositioninfo_p.h"
 #include "qlocationutils_p.h"
@@ -49,13 +13,16 @@
 #include <array>
 #include <QDebug>
 #include <QtCore/QtNumeric>
+#include <QtCore/QDateTime>
+#include <QtCore/QTimeZone>
 
+#include <algorithm>
 
 QT_BEGIN_NAMESPACE
 
-#define USE_NMEA_PIMPL 0
+#define USE_POSITION_NMEA_PIMPL 0
 
-#if USE_NMEA_PIMPL
+#if USE_POSITION_NMEA_PIMPL
 class QGeoPositionInfoPrivateNmea : public QGeoPositionInfoPrivate
 {
 public:
@@ -109,7 +76,7 @@ static bool propagateDate(QGeoPositionInfo &dst, const QGeoPositionInfo &src)
 static bool propagateAttributes(QGeoPositionInfo &dst, const QGeoPositionInfo &src, bool force = true)
 {
     bool updated = false;
-    static Q_DECL_CONSTEXPR std::array<QGeoPositionInfo::Attribute, 6> attrs {
+    static constexpr std::array<QGeoPositionInfo::Attribute, 6> attrs {
                                                 { QGeoPositionInfo::GroundSpeed
                                                  ,QGeoPositionInfo::HorizontalAccuracy
                                                  ,QGeoPositionInfo::VerticalAccuracy
@@ -136,7 +103,7 @@ static bool mergePositions(QGeoPositionInfo &dst, const QGeoPositionInfo &src, Q
     updated |= propagateDate(dst, src);
     updated |= propagateAttributes(dst, src);
 
-#if USE_NMEA_PIMPL
+#if USE_POSITION_NMEA_PIMPL
     QGeoPositionInfoPrivateNmea *dstPimpl = static_cast<QGeoPositionInfoPrivateNmea *>(QGeoPositionInfoPrivate::get(dst));
     dstPimpl->nmeaSentences.append(nmeaSentence);
 #else
@@ -156,6 +123,9 @@ static qint64 msecsTo(const QDateTime &from, const QDateTime &to)
     return from.msecsTo(to);
 }
 
+QNmeaReader::~QNmeaReader()
+    = default;
+
 QNmeaRealTimeReader::QNmeaRealTimeReader(QNmeaPositionInfoSourcePrivate *sourcePrivate)
         : QNmeaReader(sourcePrivate), m_update(*new QGeoPositionInfoPrivateNmea)
 {
@@ -164,20 +134,25 @@ QNmeaRealTimeReader::QNmeaRealTimeReader(QNmeaPositionInfoSourcePrivate *sourceP
     // The update will be pushed earlier than this if a newer update will be received.
     // The update will be withold longer than this amount of time if additional
     // valid data will keep arriving within this time frame.
-    QByteArray pushDelay = qgetenv("QT_NMEA_PUSH_DELAY");
-    if (!pushDelay.isEmpty())
-        m_pushDelay = qBound(-1, QString::fromLatin1(pushDelay).toInt(), 1000);
+    bool ok = false;
+    int pushDelay = qEnvironmentVariableIntValue("QT_NMEA_PUSH_DELAY", &ok);
+    if (ok)
+        pushDelay = std::clamp(pushDelay, -1, 1000);
     else
-        m_pushDelay = 20;
+        pushDelay = 20;
 
-    if (m_pushDelay >= 0) {
+    if (pushDelay >= 0) {
         m_timer.setSingleShot(true);
-        m_timer.setInterval(m_pushDelay);
-        m_timer.connect(&m_timer, &QTimer::timeout, [this]() {
+        m_timer.setInterval(pushDelay);
+        m_timer.connect(&m_timer, &QTimer::timeout, &m_timer, [this]() {
            this->notifyNewUpdate();
         });
     }
+    m_pushDelay = pushDelay;
 }
+
+QNmeaRealTimeReader::~QNmeaRealTimeReader()
+    = default;
 
 void QNmeaRealTimeReader::readAvailableData()
 {
@@ -190,9 +165,13 @@ void QNmeaRealTimeReader::readAvailableData()
 
         char buf[1024];
         qint64 size = m_proxy->m_device->readLine(buf, sizeof(buf));
+        if (size <= 0)
+            continue;
+
         const bool oldFix = m_hasFix;
         bool hasFix;
-        const bool parsed = m_proxy->parsePosInfoFromNmeaData(buf, size, &pos, &hasFix);
+        const bool parsed = m_proxy->parsePosInfoFromNmeaData(
+            QByteArrayView{buf, static_cast<qsizetype>(size)}, &pos, &hasFix);
 
         if (!parsed) {
             // got garbage, don't stop the timer
@@ -247,7 +226,7 @@ void QNmeaRealTimeReader::readAvailableData()
             }
         } else {
             // there was no info with valid TS. Overwrite with whatever is parsed.
-#if USE_NMEA_PIMPL
+#if USE_POSITION_NMEA_PIMPL
             pimpl->nmeaSentences.append(QByteArray(buf, size));
 #endif
             propagateAttributes(pos, m_update);
@@ -369,7 +348,8 @@ static int processSentence(QGeoPositionInfo &info,
 
         QGeoPositionInfoPrivateNmea *pimpl = new QGeoPositionInfoPrivateNmea;
         QGeoPositionInfo pos(*pimpl);
-        if (m_proxy->parsePosInfoFromNmeaData(buf, size, &pos, &hasFix)) {
+        if (m_proxy->parsePosInfoFromNmeaData(
+                QByteArrayView{buf, static_cast<qsizetype>(size)}, &pos, &hasFix)) {
             // Date may or may not be valid, as some packets do not have date.
             // If date isn't valid, match is performed on time only.
             // Hence, make sure that packet blocks are generated with
@@ -396,7 +376,7 @@ static int processSentence(QGeoPositionInfo &info,
                 }
             } else {
                 // there was no info with valid TS. Overwrite with whatever is parsed.
-#if USE_NMEA_PIMPL
+#if USE_POSITION_NMEA_PIMPL
                 pimpl->nmeaSentences.append(QByteArray(buf, size));
 #endif
                 info = pos;
@@ -556,10 +536,10 @@ void QNmeaPositionInfoSourcePrivate::prepareSourceDevice()
     }
 }
 
-bool QNmeaPositionInfoSourcePrivate::parsePosInfoFromNmeaData(const char *data, int size,
+bool QNmeaPositionInfoSourcePrivate::parsePosInfoFromNmeaData(QByteArrayView data,
         QGeoPositionInfo *posInfo, bool *hasFix)
 {
-    return m_source->parsePosInfoFromNmeaData(data, size, posInfo, hasFix);
+    return m_source->parsePosInfoFromNmeaData(data, posInfo, hasFix);
 }
 
 void QNmeaPositionInfoSourcePrivate::startUpdates()
@@ -657,7 +637,7 @@ void QNmeaPositionInfoSourcePrivate::notifyNewUpdate(QGeoPositionInfo *update, b
         // some sentence have time but no date
         QTime time = update->timestamp().time();
         if (time.isValid() && m_currentDate.isValid())
-            update->setTimestamp(QDateTime(m_currentDate, time, Qt::UTC));
+            update->setTimestamp(QDateTime(m_currentDate, time, QTimeZone::UTC));
     }
 
     // Some attributes are sent in separate NMEA sentences. Save and restore the accuracy
@@ -835,12 +815,32 @@ double QNmeaPositionInfoSource::userEquivalentRangeError() const
     Returns true if the sentence was successfully parsed, otherwise returns false and should not
     modifiy \a posInfo or \a hasFix.
 */
+
+#if QT_DEPRECATED_SINCE(7, 0)
 bool QNmeaPositionInfoSource::parsePosInfoFromNmeaData(const char *data, int size,
-        QGeoPositionInfo *posInfo, bool *hasFix)
+                                                       QGeoPositionInfo *posInfo, bool *hasFix)
 {
-    return QLocationUtils::getPosInfoFromNmea(data, size, posInfo, d->m_userEquivalentRangeError,
-                                              hasFix);
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
+    return QLocationUtils::getPosInfoFromNmea(QByteArrayView{data, size}, posInfo,
+                                              d->m_userEquivalentRangeError, hasFix);
+#else
+    return parsePosInfoFromNmeaData(QByteArrayView{data, size}, posInfo, hasFix);
+#endif
 }
+#endif // QT_DEPRECATED_SINCE(7, 0)
+
+bool QNmeaPositionInfoSource::parsePosInfoFromNmeaData(QByteArrayView data,
+                                                       QGeoPositionInfo *posInfo, bool *hasFix)
+{
+#if QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
+    return parsePosInfoFromNmeaData(data.data(), static_cast<int>(data.size()),
+                                                             posInfo, hasFix);
+#else
+    return QLocationUtils::getPosInfoFromNmea(data, posInfo,
+                                              d->m_userEquivalentRangeError, hasFix);
+#endif
+}
+
 
 /*!
     Returns the update mode.
@@ -852,14 +852,14 @@ QNmeaPositionInfoSource::UpdateMode QNmeaPositionInfoSource::updateMode() const
 
 /*!
     Sets the NMEA data source to \a device. If the device is not open, it
-    will be opened in QIODevice::ReadOnly mode.
+    will be opened in \l{QIODeviceBase::}{ReadOnly} mode.
 
     The source device can only be set once and must be set before calling
-    startUpdates() or requestUpdate().
+    \l startUpdates() or \l requestUpdate().
 
-    \b {Note:} The \a device must emit QIODevice::readyRead() for the
+    \note The \a device must emit \l {QIODevice::readyRead()} for the
     source to be notified when data is available for reading.
-    QNmeaPositionInfoSource does not assume the ownership of the device,
+    \l QNmeaPositionInfoSource does not assume the ownership of the device,
     and hence does not deallocate it upon destruction.
 */
 void QNmeaPositionInfoSource::setDevice(QIODevice *device)

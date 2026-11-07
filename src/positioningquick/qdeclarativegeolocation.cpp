@@ -1,41 +1,6 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtPositioning module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2016 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+// Qt-Security score:significant reason:default
 
 #include "qdeclarativegeolocation_p.h"
 
@@ -76,7 +41,7 @@ QT_BEGIN_NAMESPACE
 */
 
 /*!
-    \qmlproperty VariantMap QDeclarativeGeoLocation::extendedAttributes
+    \qmlproperty VariantMap QtPositioning::Location::extendedAttributes
 
     This property holds the extended attributes for this Location.
     Extended attributes are backend-dependent and can be location-dependent.
@@ -88,17 +53,31 @@ QDeclarativeGeoLocation::QDeclarativeGeoLocation(QObject *parent)
 :   QObject(parent)
 
 {
-    setLocation(QGeoLocation());
+    setLocationInternal(QGeoLocation());
 }
 
 QDeclarativeGeoLocation::QDeclarativeGeoLocation(const QGeoLocation &src, QObject *parent)
 :   QObject(parent)
 {
-    setLocation(src);
+    setLocationInternal(src);
 }
 
 QDeclarativeGeoLocation::~QDeclarativeGeoLocation()
 {
+}
+
+/*!
+    \internal
+
+    This method is supposed to be used in the constructors, when we know that
+    the properties have no bindings, and we do not want to introduce any.
+*/
+void QDeclarativeGeoLocation::setLocationInternal(const QGeoLocation &src)
+{
+    m_address.setValueBypassingBindings(new QDeclarativeGeoAddress(src.address(), this));
+    m_coordinate.setValueBypassingBindings(src.coordinate());
+    m_boundingShape.setValueBypassingBindings(src.boundingShape());
+    m_extendedAttributes.setValueBypassingBindings(src.extendedAttributes());
 }
 
 /*!
@@ -142,19 +121,18 @@ QGeoLocation QDeclarativeGeoLocation::location() const
 void QDeclarativeGeoLocation::setAddress(QDeclarativeGeoAddress *address)
 {
     m_address.removeBindingUnlessInWrapper();
-    if (m_address == address)
+
+    const QDeclarativeGeoAddress *oldAddress = m_address.valueBypassingBindings();
+    if (oldAddress == address)
         return;
 
     // implicitly deleting m_address.value() will force the QML bindings to
     // be reevaluated by the QML engine. So we defer the deletion of the old
     // address until a new value is assigned to the m_address.
-    QDeclarativeGeoAddress *oldAddress = nullptr;
-    if (m_address && m_address->parent() == this)
-        oldAddress = m_address.value();
-
     m_address.setValueBypassingBindings(address);
     m_address.notify();
-    delete oldAddress;
+    if (oldAddress && (oldAddress->parent() == this))
+        delete oldAddress;
 }
 
 QBindable<QDeclarativeGeoAddress *> QDeclarativeGeoLocation::bindableAddress()
@@ -171,9 +149,6 @@ QDeclarativeGeoAddress *QDeclarativeGeoLocation::address() const
     \qmlproperty coordinate QtPositioning::Location::coordinate
 
     This property holds the exact geographical coordinate of the location which can be used to retrieve the latitude, longitude and altitude of the location.
-
-    \note this property's changed() signal is currently emitted only if the
-    whole object changes, not if only the contents of the object change.
 */
 void QDeclarativeGeoLocation::setCoordinate(const QGeoCoordinate coordinate)
 {
@@ -193,23 +168,20 @@ QGeoCoordinate QDeclarativeGeoLocation::coordinate() const
 /*!
     \since QtPositioning 6.2
 
-    \qmlproperty geoshape QtPositioning::Location::boundingShape
+    \qmlproperty geoShape QtPositioning::Location::boundingShape
 
     This property holds the recommended region to use when displaying the location.
     For example, a building's location may have a region centered around the building,
     but the region is large enough to show it's immediate surrounding geographical
     context.
 
-    \note This property's changed() signal is currently emitted only if the
-    whole object changes, not if only the contents of the object change.
-
     \note This property was introduced in Qt6 instead of boundingBox property.
-    It returns a \l geoshape instead of a \l georectangle.
+    It returns a \l geoShape instead of a \l geoRectangle.
     Use \l QGeoShape::boundingGeoRectangle() to obtain a bounding
-    \l georectangle for the shape.
+    \l geoRectangle for the shape.
 
     If you need to convert the returned shape to a specific type, use the
-    \c type property of \l geoshape together with convenience
+    \c type property of \l geoShape together with convenience
     methods from \l [QML]{QtPositioning} like
     \l {QtPositioning::shapeToRectangle}{QtPositioning.shapeToRectangle()}.
 */

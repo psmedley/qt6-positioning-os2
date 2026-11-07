@@ -1,35 +1,11 @@
-/****************************************************************************
-**
-** Copyright (C) 2017 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the documentation of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:FDL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Free Documentation License Usage
-** Alternatively, this file may be used under the terms of the GNU Free
-** Documentation License version 1.3 as published by the Free Software
-** Foundation and appearing in the file included in the packaging of
-** this file. Please review the following information to ensure
-** the GNU Free Documentation License version 1.3 requirements
-** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
-** $QT_END_LICENSE$
-**
-****************************************************************************/
+// Copyright (C) 2017 The Qt Company Ltd.
+// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GFDL-1.3-no-invariants-only
 
 /*!
 \page location-positioning-qml.html
 
 \title Positioning (QML)
-
+\ingroup explanations-positioning
 \brief The Location Positioning API enables location positioning by means of
 GPS or an NMEA data source.
 
@@ -63,30 +39,32 @@ providing the other attributes listed above.
 
 \section2 Coordinates
 
-The \l {coordinate} is a basic unit of geographical information. The
-\l {coordinate} type has attributes to hold the \c {latitude},
-\c longitude and \c altitude.
+The \l geoCoordinate type provides a coordinate, the basic unit of
+geographical information. It has attributes to hold the \c latitude,
+\c longitude and \c altitude. The \l {QtPositioning::}{Location} contains a
+geoCoordinate in addition to a physical address and a bounding box.
+\b {See also}: \l {Place::location}{retrieving a location}
 
 \section2 Positions
 
-The three dimensional position of an object such as a mobile device can be specified by giving
-the latitude, longitude and altitude.  That is the values held in the
-\l {coordinate} type.  Additionally for computation of future
-positions we would like to know if the object is moving, what \l [QML] {Position::}{speed} it is
-doing and what is the \l {Position::timestamp}{timestamp} of the last position data.  Position
-therefore includes values for the \l {Position::coordinate}{coordinate},
-\l {Position::speed}{speed} and a \l {Position::timestamp}{timestamp}.  \l Position also takes
-responsibility for validation of sensible values for these properties.  These are exposed as
-the \l {Position::latitudeValid}{latitudeValid}, \l {Position::longitudeValid}{longitudeValid},
-\l {Position::altitudeValid}{altitudeValid}, \l {Position::speedValid}{speedValid},
-\l {Position::horizontalAccuracyValid}{horizontalAccuracyValid}, and
-\l {Position::verticalAccuracyValid}{verticalAccuracyValid} properties.
-
+In addition to \l geoCoordinate, which holds the three-dimensional position
+of an object, the \l Position type provides \l {Position::speed}{speed} and a
+\l {Position::timestamp}{timestamp} to compute future positions.
+\l Position validates sensible values for these properties, which are
+exposed as the following properties:
+\list
+    \li \l {Position::latitudeValid}{latitudeValid}
+    \li \l {Position::longitudeValid}{longitudeValid}
+    \li \l {Position::altitudeValid}{altitudeValid}
+    \li \l {Position::speedValid}{speedValid}
+    \li \l {Position::horizontalAccuracyValid}{horizontalAccuracyValid}
+    \li \l {Position::verticalAccuracyValid}{verticalAccuracyValid}
+\endlist
 
 \section2 PositionSource Type
 
-We have a \l Position type, a \l {coordinate} type but where does the data come
-from? Also it is a good idea to be able to indicate alternative sources.
+We have \l Position and \l geoCoordinate types, but where does the data come
+from? It is also useful to be able to indicate alternative sources.
 Perhaps instead of directly picking up GPS satellites it might be desirable to
 do some testing using a datafile.
 
@@ -103,10 +81,10 @@ time stamp of each NMEA sentence to produce a "replay" of the recorded data.
 
 See the \l {Qt Positioning NMEA plugin}{plugin description} for usage examples.
 
+\section2 Satellite Info Example
 
-\section2 GeoFlickr Example
-
-The \l{GeoFlickr (QML)}{GeoFlickr Example} uses the \l PositionSource to
-download thumbnail images from Flickr relevant to the current location.
+The \l {Satellite Info} example uses the \l PositionSource
+and \l SatelliteSource QML types to get the satellite information relevant to
+the current location.
 
 */

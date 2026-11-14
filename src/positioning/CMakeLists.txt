@@ -47,7 +47,6 @@ qt_internal_add_module(Positioning
         Qt::CorePrivate
     DEFINES
         QT_NO_CONTEXTLESS_CONNECT
-    OS2_SHORT_NAME Qt6Posit
 )
 
 if(ANDROID)
@@ -61,6 +60,11 @@ if(ANDROID)
         android.permission.ACCESS_FINE_LOCATION
     )
 endif()
+
+qt_internal_extend_target(Positioning CONDITION WIN32
+    NO_UNITY_BUILD_SOURCES
+        qclipperutils.cpp # `using namespace std` in clip2tri.h results in 'byte': ambiguous symbol
+)
 
 #### Keys ignored in scope 1:.:.:positioning.pro:<TRUE>:
 # ANDROID_FEATURES = "android.hardware.location.gps"
